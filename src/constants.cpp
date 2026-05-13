@@ -2,8 +2,8 @@
 #include "constants_private.h"
 
 // Constantes públicas (configuración general)
-const char* YOUR_GITHUB_USERNAME = "Pablomonte";
-const char* YOUR_REPO_NAME = "proyecto-monitoreo";
+const char* YOUR_GITHUB_USERNAME = "AlterMundi-MonitoreoyControl";
+const char* YOUR_REPO_NAME = "Proyecto-Plantinera";
 const unsigned long UPDATE_INTERVAL = 3600000;  // 1 hora
 const char* CONFIG_FILE_PATH = "/config.json";
 
