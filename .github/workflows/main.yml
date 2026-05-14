@@ -69,6 +69,13 @@ jobs:
         cp .pio/build/esp32dev_multi/spiffs.bin binarios/ || echo "No se generó spiffs.bin"
         cp build_reports/size_report_esp32dev_multi.txt binarios/ || echo "No se generaron reportes de build"
 
+    - name: Upload firmware as artifact (diagnostic)
+      uses: actions/upload-artifact@v4
+      with:
+        name: firmware-${{ github.sha }}
+        path: binarios/
+        retention-days: 14
+
     - name: Get Version
       id: get_version
       run: |
