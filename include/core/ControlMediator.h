@@ -63,13 +63,6 @@ public:
         _state[idx].value   = r.value;
         _state[idx].counter = r.counter;
         _state[idx].valid   = true;
-        _dirty = true;  // coalesce: evaluation runs once per loop in tick()
-    }
-
-    /** Evaluate rules if any sensor reading arrived since last evaluation. */
-    void evaluateIfDirty() {
-        if (!_dirty) return;
-        _dirty = false;
         evaluateAllRules();
     }
 
@@ -89,7 +82,6 @@ public:
      * (GpioActuator uses esp_timer internally and does not need tick()).
      */
     void tick() {
-        evaluateIfDirty();
         uint32_t now = millis();
         for (uint8_t i = 0; i < _actuatorCount; i++) {
             // delegated tick (RelayModule2CH or other non-esp_timer actuators)
@@ -141,8 +133,6 @@ private:
     uint32_t        _activeDuration[ACTUATOR_MAX];
     bool            _dispatched[ACTUATOR_MAX];
 
-    bool _dirty = false;
-
     void _clear() {
         for (uint16_t i = 0; i < STATE_STORE_SIZE; i++) {
             _state[i] = {0, 0.0f, 0, false};
@@ -155,7 +145,6 @@ private:
             _active[i]          = {0, false, 0, 0};
             _dispatched[i]      = false;
         }
-        _dirty = false;
     }
 
     uint8_t _storeIndex(const SensorKey& key) const {
