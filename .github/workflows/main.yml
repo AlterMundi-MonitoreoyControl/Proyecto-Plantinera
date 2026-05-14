@@ -24,6 +24,20 @@ jobs:
     - name: Install PlatformIO
       run: pip install platformio==6.1.16
 
+    - name: Check Grafana secrets length (diagnostic)
+      env:
+        GRAFANA_URL: ${{ secrets.GRAFANA_URL }}
+        GRAFANA_TOKEN: ${{ secrets.GRAFANA_TOKEN }}
+      run: |
+        echo "[CI-check] GRAFANA_URL len=${#GRAFANA_URL}"
+        echo "[CI-check] GRAFANA_TOKEN len=${#GRAFANA_TOKEN}"
+        # tail of URL (last 10 chars) to detect trailing whitespace/newlines
+        # without leaking the secret. Empty if URL is empty.
+        if [ -n "$GRAFANA_URL" ]; then
+          TAIL=$(printf '%s' "$GRAFANA_URL" | tail -c 10 | od -An -c | tr -d ' \n')
+          echo "[CI-check] URL tail (last 10 chars, octal-escaped): $TAIL"
+        fi
+
     - name: Create constants_private.h from secrets
       run: |
         cat > include/constants_private.h << 'EOF'
@@ -37,6 +51,11 @@ jobs:
 
         #endif
         EOF
+        echo "[CI-check] generated constants_private.h:"
+        wc -l include/constants_private.h
+        # Show only lines that DON'T contain http or token characters
+        # (we mask the secret content but show the file structure)
+        sed 's/"[^"]*"/"<masked>"/g' include/constants_private.h
 
     - name: Run Unit Tests
       run: pio test -e native_test
