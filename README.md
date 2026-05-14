@@ -3,7 +3,7 @@
 Firmware ESP32 para **monitoreo y control automatizado** de incubadoras y plantineras.
 Mide sensores ambientales, actúa sobre relés mediante reglas configurables y transmite datos a Grafana/InfluxDB.
 
-**Versión:** 0.2.12 · **Plataforma:** ESP32 · **Framework:** Arduino / PlatformIO
+![version](https://img.shields.io/badge/versión-0.2.12-blue) ![platform](https://img.shields.io/badge/plataforma-ESP32-red) ![framework](https://img.shields.io/badge/framework-Arduino%20%2F%20PlatformIO-orange)
 
 ---
 
@@ -21,6 +21,9 @@ Mide sensores ambientales, actúa sobre relés mediante reglas configurables y t
 
 ## Sensores Soportados
 
+<details>
+<summary>Ver sensores soportados (6)</summary>
+
 | Sensor | Protocolo | Mide |
 |--------|-----------|------|
 | SCD30 | I2C | CO2, temperatura, humedad |
@@ -29,6 +32,8 @@ Mide sensores ambientales, actúa sobre relés mediante reglas configurables y t
 | Capacitive / HD38 | ADC | Humedad de suelo |
 | Modbus TH | RS485 | Temperatura, humedad (remoto) |
 | Modbus 7-en-1 | RS485 | N, P, K, pH, EC, temp, humedad |
+
+</details>
 
 ---
 
@@ -61,6 +66,9 @@ pio run -e esp32dev_multi --target upload
 
 ### Entornos de compilación
 
+<details>
+<summary>Ver entornos disponibles (7)</summary>
+
 | Entorno | Sensores | Extras |
 |---------|----------|--------|
 | `esp32dev` | SCD30 | — |
@@ -71,9 +79,14 @@ pio run -e esp32dev_multi --target upload
 | `esp32dev_bme280` | BME280 | — |
 | `esp32dev_capacitive` | Capacitive | — |
 
+</details>
+
 ---
 
 ## Configuración inicial
+
+> [!NOTE]
+> Al primer arranque (o tras factory reset) el dispositivo levanta su propio AP. Conectarse a él para configurar WiFi y sensores.
 
 1. Al primer arranque el ESP32 levanta un AP (`ESP32-{MAC}`)
 2. Conectarse a ese AP
