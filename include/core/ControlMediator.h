@@ -52,7 +52,7 @@ public:
      * (prevents processing stale or out-of-order readings).
      */
     void onSensorReading(const SensorReading& r) {
-        DBG_VERBOSE("[Mediator] onSensorReading: key=%08lX val=%.2f cnt=%lu\n", 
+        DBG_VERBOSE("[Mediator] onSensorReading: key=%08lX val=%.2f cnt=%lu\n",
                     (unsigned long)r.key.toU32(), r.value, (unsigned long)r.counter);
         uint8_t idx = _storeIndex(r.key);
         if (_state[idx].valid && _state[idx].keyU32 == r.key.toU32() && r.counter <= _state[idx].counter) {
@@ -63,6 +63,13 @@ public:
         _state[idx].value   = r.value;
         _state[idx].counter = r.counter;
         _state[idx].valid   = true;
+        _dirty = true;  // coalesce: evaluation runs once per loop in tick()
+    }
+
+    /** Evaluate rules if any sensor reading arrived since last evaluation. */
+    void evaluateIfDirty() {
+        if (!_dirty) return;
+        _dirty = false;
         evaluateAllRules();
     }
 
@@ -82,6 +89,7 @@ public:
      * (GpioActuator uses esp_timer internally and does not need tick()).
      */
     void tick() {
+        evaluateIfDirty();
         uint32_t now = millis();
         for (uint8_t i = 0; i < _actuatorCount; i++) {
             // delegated tick (RelayModule2CH or other non-esp_timer actuators)
@@ -133,6 +141,8 @@ private:
     uint32_t        _activeDuration[ACTUATOR_MAX];
     bool            _dispatched[ACTUATOR_MAX];
 
+    bool _dirty = false;
+
     void _clear() {
         for (uint16_t i = 0; i < STATE_STORE_SIZE; i++) {
             _state[i] = {0, 0.0f, 0, false};
@@ -145,6 +155,7 @@ private:
             _active[i]          = {0, false, 0, 0};
             _dispatched[i]      = false;
         }
+        _dirty = false;
     }
 
     uint8_t _storeIndex(const SensorKey& key) const {
@@ -172,32 +183,22 @@ private:
             case ExprType::LEAF: {
                 uint8_t si = _storeIndex(e.cond.key);
                 if (!_state[si].valid || _state[si].keyU32 != e.cond.key.toU32()) {
-                    DBG_VERBOSE("[Mediator] evalExpr LEAF: key=%08lX state invalid\n", (unsigned long)e.cond.key.toU32());
                     return false;
                 }
                 float v = _state[si].value;
-                bool res = false;
                 switch (e.cond.op) {
-                    case CondOp::GT:  res = v >  e.cond.threshold; break;
-                    case CondOp::LT:  res = v <  e.cond.threshold; break;
-                    case CondOp::EQ:  res = fabsf(v - e.cond.threshold) < 1e-4f; break;
-                    case CondOp::GTE: res = v >= e.cond.threshold; break;
-                    case CondOp::LTE: res = v <= e.cond.threshold; break;
+                    case CondOp::GT:  return v >  e.cond.threshold;
+                    case CondOp::LT:  return v <  e.cond.threshold;
+                    case CondOp::EQ:  return fabsf(v - e.cond.threshold) < 1e-4f;
+                    case CondOp::GTE: return v >= e.cond.threshold;
+                    case CondOp::LTE: return v <= e.cond.threshold;
                 }
-                DBG_VERBOSE("[Mediator] evalExpr LEAF: key=%08lX val=%.2f op=%d thresh=%.2f -> %s\n", 
-                            (unsigned long)e.cond.key.toU32(), v, (int)e.cond.op, e.cond.threshold, res ? "TRUE" : "FALSE");
-                return res;
+                return false;
             }
-            case ExprType::AND: {
-                bool res = evalExpr(e.leftIdx) && evalExpr(e.rightIdx);
-                DBG_VERBOSE("[Mediator] evalExpr AND: left=%d right=%d -> %s\n", e.leftIdx, e.rightIdx, res ? "TRUE" : "FALSE");
-                return res;
-            }
-            case ExprType::OR: {
-                bool res = evalExpr(e.leftIdx) || evalExpr(e.rightIdx);
-                DBG_VERBOSE("[Mediator] evalExpr OR: left=%d right=%d -> %s\n", e.leftIdx, e.rightIdx, res ? "TRUE" : "FALSE");
-                return res;
-            }
+            case ExprType::AND:
+                return evalExpr(e.leftIdx) && evalExpr(e.rightIdx);
+            case ExprType::OR:
+                return evalExpr(e.leftIdx) || evalExpr(e.rightIdx);
         }
         return false;
     }
@@ -206,9 +207,8 @@ private:
         DBG_VERBOSE("[Mediator] Evaluating %d rules...\n", _ruleCount);
         for (uint8_t i = 0; i < _ruleCount; i++) {
             const Rule& r = _rules[i];
-            bool result = evalExpr(r.rootExprIdx);
-            DBG_VERBOSE("[Mediator]  - Rule %d (actuator %d): %s\n", i, r.actuatorId, result ? "TRUE" : "FALSE");
-            if (result) {
+            if (evalExpr(r.rootExprIdx)) {
+                DBG_VERBOSE("[Mediator]  - Rule %d fires (actuator %d)\n", i, r.actuatorId);
                 ActuatorCommand cmd{r.actuatorId, r.triggerState, r.durationMs, r.priority};
                 dispatch(cmd);
             }

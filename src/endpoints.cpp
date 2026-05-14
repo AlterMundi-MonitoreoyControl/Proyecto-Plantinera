@@ -302,8 +302,10 @@ void handleMediciones() {
     if (!r) continue;
     DBG_INFO("[Endpoint] Syncing relay addr=%d inputs is active= %i\n", r->getAddress(), r->isActive() );
 
-    r->syncState();
-    r->syncInputs(mediator);
+    if (r->isActive()) {
+      r->syncState();
+      r->syncInputs(mediator);
+    }
 
     JsonObject sensorObj = sensors.add<JsonObject>();
     sensorObj["type"] = "Entradas Digitales";
@@ -638,7 +640,7 @@ void handleRelayList() {
 
   for (auto *r : relayMgr.getRelays()) {
     if (r) {
-      r->syncState();
+      if (r->isActive()) r->syncState();
       JsonDocument tempDoc;
       deserializeJson(tempDoc, r->getStatusJSON());
       arr.add(tempDoc);

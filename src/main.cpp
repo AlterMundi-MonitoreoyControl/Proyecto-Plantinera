@@ -184,7 +184,7 @@ void printBanner() {
 }
 
 void setup() {
-  DEBUG_BEGIN(115200);
+  DEBUG_BEGIN(460800);
   delay(500);
 
   IF_INFO(printBanner());
@@ -603,7 +603,7 @@ void loop() {
 
     // Report Relays to Grafana
     for (auto *r : relayMgr.getRelays()) {
-      if (r) {
+      if (r && r->isActive()) {
         r->syncState();
         r->syncInputs(mediator);
 
