@@ -24,6 +24,8 @@ void sendDataGrafana(float temperature, float humidity, float co2, const char* s
         DBG_VERBOSE("Grafana: %s\n", data.c_str());
 
         int httpResponseCode = localHttp.POST(data);
+        DBG_INFO("[Grafana] POST %u bytes -> %d (%s/%s)\n",
+                 (unsigned)data.length(), httpResponseCode, deviceId, sensorId);
         if (httpResponseCode != 204) {
             DBG_ERROR("Grafana error: %d\n", httpResponseCode);
         }
@@ -48,6 +50,8 @@ void sendDataGrafana(const char* message, const char* sensorId, const char* devi
         DBG_VERBOSE("Grafana: %s\n", data.c_str());
 
         int httpResponseCode = localHttp.POST(data);
+        DBG_INFO("[Grafana] POST %u bytes -> %d (%s/%s)\n",
+                 (unsigned)data.length(), httpResponseCode, deviceId, sensorId);
         if (httpResponseCode != 204) {
             DBG_ERROR("Grafana error: %d\n", httpResponseCode);
         }

@@ -44,7 +44,8 @@ public:
         moisture = map(rawValue, dryValue, wetValue, 0, 100);
         moisture = constrain(moisture, 0, 100);
 
-        DBG_VERBOSE("[Capacitive] Raw=%d M=%.1f%% \tkey=0x%llx \n", rawValue, moisture, (unsigned long long)this->getKey().toU32());
+        DBG_INFO("[Capacitive] pin=%d Raw=%d M=%.1f%% (dry=%d wet=%d)\n",
+                 pin, rawValue, moisture, dryValue, wetValue);
         return true;
     }
 

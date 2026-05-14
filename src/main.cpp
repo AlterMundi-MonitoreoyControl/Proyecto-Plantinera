@@ -189,6 +189,9 @@ void setup() {
 
   IF_INFO(printBanner());
 
+  DBG_INFO("[CI-check] URL len=%u TOKEN_GRAFANA len=%u\n",
+           (unsigned)strlen(URL), (unsigned)strlen(TOKEN_GRAFANA));
+
   DBG_INFOLN("[INFO] Starting system...");
   configTime(0, 0, "pool.ntp.org", "time.nist.gov");
 
