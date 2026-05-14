@@ -143,7 +143,7 @@ medicionesCO2,device=moni-80F3DAAD temp=25.3,...
 **Default:** `0`
 **Uso:** No usado
 
-**Nota:** Estos parámetros son heredados de proyecto incubator original. No afectan funcionalidad actual de monitoreo.
+**Nota:** Estos parámetros son informativos — el control automático se implementa mediante reglas en `rules.json`.
 
 ---
 
