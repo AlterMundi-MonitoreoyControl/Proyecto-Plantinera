@@ -1,6 +1,6 @@
 # Proyecto Plantinera
 
-Firmware ESP32 para **monitoreo y control automatizado** de incubadoras y plantineras.
+Firmware ESP32 para **monitoreo y control automatizado** de plantineras.
 Mide sensores ambientales, actúa sobre relés mediante reglas configurables y transmite datos a Grafana/InfluxDB.
 
 ![version](https://img.shields.io/badge/versión-0.2.12-blue) ![platform](https://img.shields.io/badge/plataforma-ESP32-red) ![framework](https://img.shields.io/badge/framework-Arduino%20%2F%20PlatformIO-orange)
