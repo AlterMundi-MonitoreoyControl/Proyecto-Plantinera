@@ -188,6 +188,12 @@ public:
             return true;
         }
 
+        // Skip recovery entirely if Modbus is permanently disabled — avoids
+        // wasted CPU and log spam when rs485_enabled=false.
+        if (!ModbusManager::getInstance().isInitialized()) {
+            return false;
+        }
+
         _inactiveCheckCount++;
         if (_inactiveCheckCount >= 10) {
             DBG_VERBOSE("[Relay %d] Recovery attempt\n", _address);
@@ -203,6 +209,8 @@ public:
      * @param state true=ON, false=OFF
      */
     bool setRelay(uint8_t channel, bool state) {
+        if (!isActive()) return false;
+
         ModbusRTU* mb = ModbusManager::getInstance().getModbus();
         if (!mb) return false;
 
@@ -220,7 +228,7 @@ public:
         }
 
         unsigned long start = millis();
-        while (!_cbComplete && millis() - start < 1000) {
+        while (!_cbComplete && millis() - start < 250) {
             mb->task();
             delay(10);
         }
@@ -266,7 +274,7 @@ public:
         bool coils[8];
         if (mb->readCoil(_address, 0, coils, 8, modbusCallback)) {
             unsigned long start = millis();
-            while (!_cbComplete && millis() - start < 1000) {
+            while (!_cbComplete && millis() - start < 250) {
                 mb->task();
                 delay(10);
             }
@@ -304,7 +312,7 @@ public:
         }
 
         unsigned long start = millis();
-        while (!_cbComplete && millis() - start < 1000) {
+        while (!_cbComplete && millis() - start < 250) {
             mb->task();
             delay(10);
         }
