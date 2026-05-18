@@ -659,6 +659,16 @@ const char *data_html = R"=====(<!DOCTYPE html>
                    </div>`;
                 });
 
+                if (s.diagnostics && s.diagnostics.raw !== undefined) {
+                    const cal = s.calibration || {};
+                    const calTxt = (cal.dry !== undefined && cal.wet !== undefined)
+                        ? ` <small>(dry=${cal.dry} wet=${cal.wet})</small>` : '';
+                    html += `<div class='val'>
+                       <span>RAW ADC</span>
+                       <b>${s.diagnostics.raw}${calTxt}</b>
+                   </div>`;
+                }
+
                 if (s.readings.length === 0) {
                     html += `<div class='val'><span>Estado</span><b>${s.active ? "Sin datos" : "Inactivo"}</b></div>`;
                 }
