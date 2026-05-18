@@ -97,8 +97,8 @@ public:
             moisture = map(rawValue, dryValue, wetValue, 0, 100);
             moisture = constrain(moisture, 0, 100);
 
-            DBG_VERBOSE("[HD38] '%s' Raw=%d M=%.1f%%\n",
-                         sensorName.c_str(), rawValue, moisture);
+            DBG_INFO("[HD38] '%s' pin=%d Raw=%d M=%.1f%% (dry=%d wet=%d)\n",
+                     sensorName.c_str(), analogPin, rawValue, moisture, dryValue, wetValue);
         }
 
         if (digitalPin >= 0) {
