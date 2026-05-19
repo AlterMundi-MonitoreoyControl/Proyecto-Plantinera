@@ -1,59 +1,27 @@
 #include <Arduino.h>
 #include <WiFi.h>
-#include <HTTPClient.h>
-#include <WiFiClientSecure.h>
 #include "constants.h"
 #include "globals.h"
 #include "sendDataGrafana.h"
 #include "createGrafanaMessage.h"
+#include "GrafanaLogger.h"
 #include "debug.h"
 
-
-
-void sendDataGrafana(float temperature, float humidity, float co2, const char* sensorId, const char* deviceId)  {
-    if (WiFi.status() == WL_CONNECTED) {
-        HTTPClient localHttp;
-
-        localHttp.begin(client, URL);
-        localHttp.setTimeout(500);
-        localHttp.addHeader("Content-Type", "text/plain");
-        localHttp.addHeader("Authorization", "Basic " + String(TOKEN_GRAFANA));
-
-        String data = create_grafana_message(temperature, humidity, co2, sensorId, deviceId);
-
-        DBG_VERBOSE("Grafana: %s\n", data.c_str());
-
-        int httpResponseCode = localHttp.POST(data);
-        if (httpResponseCode != 204) {
-            DBG_ERROR("Grafana error: %d\n", httpResponseCode);
-        }
-
-        localHttp.end();
-    } else {
-        DBG_ERROR("WiFi disconnected\n");
-    }
+/**
+ * sendDataGrafana — guarded Grafana POST via GrafanaLogger.
+ *
+ * All preflight checks (WiFi, heap, throttle, Grafana reachability back-off)
+ * are handled inside GrafanaLogger::safePost(), ported from tools/log.lua.
+ */
+void sendDataGrafana(float temperature, float humidity, float co2,
+                     const char* sensorId, const char* deviceId) {
+    String data = create_grafana_message(temperature, humidity, co2, sensorId, deviceId);
+    DBG_VERBOSE("Grafana: %s\n", data.c_str());
+    GrafanaLogger::getInstance().safePost(data, String(sensorId));
 }
 
 void sendDataGrafana(const char* message, const char* sensorId, const char* deviceId) {
-    if (WiFi.status() == WL_CONNECTED) {
-        HTTPClient localHttp;
-
-        localHttp.begin(client, URL);
-        localHttp.setTimeout(500);
-        localHttp.addHeader("Content-Type", "text/plain");
-        localHttp.addHeader("Authorization", "Basic " + String(TOKEN_GRAFANA));
-
-        String data = create_grafana_message(message, sensorId, deviceId);
-
-        DBG_VERBOSE("Grafana: %s\n", data.c_str());
-
-        int httpResponseCode = localHttp.POST(data);
-        if (httpResponseCode != 204) {
-            DBG_ERROR("Grafana error: %d\n", httpResponseCode);
-        }
-
-        localHttp.end();
-    } else {
-        DBG_ERROR("WiFi disconnected\n");
-    }
+    String data = create_grafana_message(message, sensorId, deviceId);
+    DBG_VERBOSE("Grafana: %s\n", data.c_str());
+    GrafanaLogger::getInstance().safePost(data, String(sensorId));
 }
