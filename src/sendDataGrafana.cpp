@@ -15,7 +15,7 @@ void sendDataGrafana(float temperature, float humidity, float co2, const char* s
         HTTPClient localHttp;
 
         localHttp.begin(client, URL);
-        localHttp.setTimeout(5000);
+        localHttp.setTimeout(500);
         localHttp.addHeader("Content-Type", "text/plain");
         localHttp.addHeader("Authorization", "Basic " + String(TOKEN_GRAFANA));
 
@@ -39,7 +39,7 @@ void sendDataGrafana(const char* message, const char* sensorId, const char* devi
         HTTPClient localHttp;
 
         localHttp.begin(client, URL);
-        localHttp.setTimeout(5000);
+        localHttp.setTimeout(500);
         localHttp.addHeader("Content-Type", "text/plain");
         localHttp.addHeader("Authorization", "Basic " + String(TOKEN_GRAFANA));
 
