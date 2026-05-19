@@ -62,7 +62,7 @@ public:
         if (analogPin >= 0) {
             pinMode(analogPin, INPUT);
             analogReadResolution(12);              // 12-bit → 0-4095
-            analogSetAttenuation(ADC_ATTENDB_MAX); // full 0-3.3V range
+            analogSetPinAttenuation(analogPin, ADC_11db); // full 0-3.3V range
         }
 
         if (digitalPin >= 0) {
