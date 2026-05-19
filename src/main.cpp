@@ -5,6 +5,7 @@
 #include "debug.h"
 #include "endpoints.h"
 #include "globals.h"
+#include "GrafanaLogger.h"
 #include "otaUpdater.h"
 #include "sendDataGrafana.h"
 #include "version.h"
@@ -381,6 +382,10 @@ void setup() {
   wifiManager.init(&server);
   DBG_INFOLN("[OK] WiFi Manager initialized");
 
+  // Initialize GrafanaLogger (port of tools/log.lua safe_http_post infrastructure)
+  // begin() is deferred — MAC is available after WiFi.mode() is set
+  GrafanaLogger::getInstance().begin();
+
 #ifdef ENABLE_ESPNOW
   DBG_INFOLN("\n[INFO] Configuring ESP-NOW...");
   bool espnowEnabled = config["espnow_enabled"] | false;
@@ -462,6 +467,10 @@ void loop() {
 #endif
   wifiManager.update();
 
+  // GrafanaLogger background tick: manages reachability probes and back-off
+  // timers. Must run every loop iteration to keep back-off accurate.
+  GrafanaLogger::getInstance().tick();
+
   IF_VERBOSE({
     static unsigned long lastStatusPrint = 0;
     if (millis() - lastStatusPrint > 30000) {
@@ -526,8 +535,18 @@ void loop() {
   if (currentMillis - lastSendTime >= sendIntervalMs) {
     lastSendTime = currentMillis;
 
+    // Heap guard: if memory is critically low, skip this send cycle entirely.
+    // Mirrors log.lua min_heap check in safe_http_post().
+    if (ESP.getFreeHeap() < 20000) {
+      DBG_ERROR("[SEND] Skipping send cycle: low heap (%u B)\n", ESP.getFreeHeap());
+      GrafanaLogger::getInstance().addError("heap",
+          "Low heap skip: " + String(ESP.getFreeHeap()) + " B");
+    } else {
+
 #ifdef SENSOR_MULTI
-    sensorMgr.readAll();  // legacy read for Grafana send path
+    // NOTE: sensorMgr.readAll() removed — data was already read by
+    // readAllAndNotify() above at readIntervalMs. Calling it twice was the
+    // primary cause of captive portal starvation with 6 ADC sensors.
 
     for (auto *s : sensorMgr.getSensors()) {
       if (s->isActive()) {
@@ -550,6 +569,12 @@ void loop() {
         DBG_INFO("[%s] %s\n", s->getSensorID(), s->getMeasurementsString());
 
         sendDataGrafana(s->getMeasurementsString(), s->getSensorID());
+
+        // Yield between per-sensor HTTP sends so server.handleClient() gets
+        // CPU time. Critical with 6 sensors — without this the captive portal
+        // is starved during the Grafana send loop.
+        server.handleClient();
+        yield();
 
 #ifdef ENABLE_RS485
         rs485.sendSensorData(temperature, humidity, co2, s->getSensorID());
@@ -614,6 +639,7 @@ void loop() {
             id = "relay_" + String(r->getAddress());
           id.replace(" ", "_");
           sendDataGrafana(data.c_str(), id.c_str());
+          server.handleClient(); yield(); // yield between relay sends too
         }
       }
     }
@@ -628,8 +654,11 @@ void loop() {
         id.replace(" ", "_");
 
         sendDataGrafana(data.c_str(), id.c_str());
+        server.handleClient(); yield(); // yield between GPIO relay sends
       }
     }
+
+    } // end heap guard
   }
   delay(10);
 }
