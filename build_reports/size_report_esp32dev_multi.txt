@@ -3,33 +3,33 @@
                         BUILD MEMORY REPORT
 ================================================================================
 Environment: esp32dev_multi
-Git version: 2e0f96c043db08f4231d98e665900a36086d223a
+Git version: 456f7753d37d058a2e82e2a61c1fd016787b441f
 MCU:         esp32
-Timestamp:   2026-05-19 16:53:52
+Timestamp:   2026-05-19 20:47:26
 Firmware:    firmware.elf
 Partitions:  min_spiffs.csv
 --------------------------------------------------------------------------------
 
 MEMORY USAGE (matches PlatformIO):
-  Flash: [======              ]  34.0%  (used 1,424,200 / 4,194,304 bytes)
-  RAM:   [====================] 125.6%  (used 411,485 / 327,680 bytes)
+  Flash: [======              ]  34.0%  (used 1,424,576 / 4,194,304 bytes)
+  RAM:   [====================] 125.6%  (used 411,577 / 327,680 bytes)
 
 --------------------------------------------------------------------------------
 FLASH BREAKDOWN:
-  .text (code):         1,044,636 bytes
-  .data (init vars):      379,564 bytes
+  .text (code):         1,044,920 bytes
+  .data (init vars):      379,656 bytes
   ─────────────────────────────────
-  Program size:         1,424,200 bytes
+  Program size:         1,424,576 bytes
   App partition:        4,194,304 bytes
-  Free in partition:    2,770,104 bytes
+  Free in partition:    2,769,728 bytes
 
 RAM BREAKDOWN:
-  .data (init vars):      379,564 bytes
+  .data (init vars):      379,656 bytes
   .bss (zero vars):        31,921 bytes
   ─────────────────────────────────
-  Static RAM:             411,485 bytes
+  Static RAM:             411,577 bytes
   Total DRAM:             327,680 bytes
-  Free (static):          -83,805 bytes
+  Free (static):          -83,897 bytes
 
 --------------------------------------------------------------------------------
 FLASH CHIP LAYOUT (4MB total):
@@ -48,7 +48,7 @@ BY FLASH USAGE:
 #    FILE                                                          TEXT       DATA      FLASH
 -----------------------------------------------------------------------------------------------
 1    src/web_assets.cpp.o                                       116,700         28    116,728
-2    src/main.cpp.o                                              88,153         24     88,177
+2    src/main.cpp.o                                              88,410         24     88,434
 3    src/endpoints.cpp.o                                         52,720         32     52,752
 4    lib9da/WifiManager/WiFiManager.cpp.o                        24,326          0     24,326
 5    lib2b4/WebServer/WebServer.cpp.o                            22,118          0     22,118
@@ -65,7 +65,7 @@ BY FLASH USAGE:
 16   lib651/WiFi/WiFiClient.cpp.o                                 8,092          0      8,092
 17   FrameworkArduino/WString.cpp.o                               7,753          8      7,761
 18   lib651/WiFi/WiFiSTA.cpp.o                                    7,743          9      7,752
-19   src/sendDataGrafana.cpp.o                                    7,307          0      7,307
+19   src/sendDataGrafana.cpp.o                                    7,565          0      7,565
 20   lib45a/ArduinoOTA/ArduinoOTA.cpp.o                           7,128          8      7,136
 21   libbcf/WiFiClientSecure/ssl_client.cpp.o                     6,707          4      6,711
 22   FrameworkArduino/esp32-hal-i2c-slave.c.o                     6,536         96      6,632
@@ -209,34 +209,34 @@ section                                                                         
 .ext_ram.bss                                                                                                                                                                                                                                                    0   1065353216
 .dram0.bss                                                                                                                                                                                                                                                  31904   1073496432
 .flash.appdesc                                                                                                                                                                                                                                                256   1061158944
-.flash.rodata                                                                                                                                                                                                                                              353440   1061159200
-.flash.rodata_noload                                                                                                                                                                                                                                        15986   1061512640
-.flash.text                                                                                                                                                                                                                                                935015   1074593824
-.phyiram.0                                                                                                                                                                                                                                                     43   1075528840
-.phyiram.1                                                                                                                                                                                                                                                    125   1075528884
-.phyiram.2                                                                                                                                                                                                                                                    542   1075529012
-.phyiram.3                                                                                                                                                                                                                                                    178   1075529556
-.phyiram.6                                                                                                                                                                                                                                                    222   1075529736
-.phyiram.4                                                                                                                                                                                                                                                    234   1075529960
-.phyiram.7                                                                                                                                                                                                                                                    228   1075530196
-.phyiram.8                                                                                                                                                                                                                                                    547   1075530424
-.phyiram.9                                                                                                                                                                                                                                                    387   1075530972
-.phyiram.10                                                                                                                                                                                                                                                   142   1075531360
-.phyiram.13                                                                                                                                                                                                                                                   392   1075531504
-.phyiram.15                                                                                                                                                                                                                                                   186   1075531896
-.phyiram.14                                                                                                                                                                                                                                                   239   1075532084
-.phyiram.16                                                                                                                                                                                                                                                   459   1075532324
-.phyiram.18                                                                                                                                                                                                                                                   114   1075532784
-.phyiram.12                                                                                                                                                                                                                                                   120   1075532900
-.phyiram.17                                                                                                                                                                                                                                                   238   1075533020
-.phyiram.24                                                                                                                                                                                                                                                    74   1075533260
-.phyiram.25                                                                                                                                                                                                                                                    49   1075533336
-.phyiram.26                                                                                                                                                                                                                                                   259   1075533388
-.phyiram.27                                                                                                                                                                                                                                                   135   1075533648
-.phyiram.22                                                                                                                                                                                                                                                    97   1075533784
-.phyiram.20                                                                                                                                                                                                                                                   270   1075533884
-.phyiram.21                                                                                                                                                                                                                                                   158   1075534156
-.phyiram.19                                                                                                                                                                                                                                                   735   1075534316
+.flash.rodata                                                                                                                                                                                                                                              353532   1061159200
+.flash.rodata_noload                                                                                                                                                                                                                                        15986   1061512732
+.flash.text                                                                                                                                                                                                                                                935299   1074593824
+.phyiram.0                                                                                                                                                                                                                                                     43   1075529124
+.phyiram.1                                                                                                                                                                                                                                                    125   1075529168
+.phyiram.2                                                                                                                                                                                                                                                    542   1075529296
+.phyiram.3                                                                                                                                                                                                                                                    178   1075529840
+.phyiram.6                                                                                                                                                                                                                                                    222   1075530020
+.phyiram.4                                                                                                                                                                                                                                                    234   1075530244
+.phyiram.7                                                                                                                                                                                                                                                    228   1075530480
+.phyiram.8                                                                                                                                                                                                                                                    547   1075530708
+.phyiram.9                                                                                                                                                                                                                                                    387   1075531256
+.phyiram.10                                                                                                                                                                                                                                                   142   1075531644
+.phyiram.13                                                                                                                                                                                                                                                   392   1075531788
+.phyiram.15                                                                                                                                                                                                                                                   186   1075532180
+.phyiram.14                                                                                                                                                                                                                                                   239   1075532368
+.phyiram.16                                                                                                                                                                                                                                                   459   1075532608
+.phyiram.18                                                                                                                                                                                                                                                   114   1075533068
+.phyiram.12                                                                                                                                                                                                                                                   120   1075533184
+.phyiram.17                                                                                                                                                                                                                                                   238   1075533304
+.phyiram.24                                                                                                                                                                                                                                                    74   1075533544
+.phyiram.25                                                                                                                                                                                                                                                    49   1075533620
+.phyiram.26                                                                                                                                                                                                                                                   259   1075533672
+.phyiram.27                                                                                                                                                                                                                                                   135   1075533932
+.phyiram.22                                                                                                                                                                                                                                                    97   1075534068
+.phyiram.20                                                                                                                                                                                                                                                   270   1075534168
+.phyiram.21                                                                                                                                                                                                                                                   158   1075534440
+.phyiram.19                                                                                                                                                                                                                                                   735   1075534600
 .iram0.text_end                                                                                                                                                                                                                                                 1   1074353319
 .iram0.data                                                                                                                                                                                                                                                     0   1074353320
 .iram0.bss                                                                                                                                                                                                                                                      0   1074353320
@@ -775,7 +775,7 @@ section                                                                         
 .xt.lit._ZNSt8_Rb_treeI6StringSt4pairIKS0_mESt10_Select1stIS3_ESt4lessIS0_ESaIS3_EE22_M_emplace_hint_uniqueIJRKSt21piecewise_construct_tSt5tupleIJRS2_EESE_IJEEEEESt17_Rb_tree_iteratorIS3_ESt23_Rb_tree_const_iteratorIS3_EDpOT_                               0            0
 .xt.lit._ZNSt3mapI6StringmSt4lessIS0_ESaISt4pairIKS0_mEEEixERS4_                                                                                                                                                                                                8            0
 .xt.lit._ZN13GrafanaLogger14_throttleCheckERK6Stringj                                                                                                                                                                                                           8            0
-.xt.lit._ZN13GrafanaLogger8sendNtfyERK6String                                                                                                                                                                                                                   8            0
+.xt.lit._ZN13GrafanaLogger8sendNtfyERK6StringS2_j                                                                                                                                                                                                               8            0
 .xt.lit._ZN13GrafanaLogger13_probeGrafanaEv                                                                                                                                                                                                                     8            0
 .xt.lit._ZNK11ArduinoJson8V741PB226detail14VariantRefBaseINS0_11JsonVariantEE2asIhEET_v                                                                                                                                                                         0            0
 .xt.lit._ZN11ArduinoJson8V741PB229ConverterIivE8fromJsonENS0_16JsonVariantConstE                                                                                                                                                                                0            0
@@ -997,8 +997,8 @@ section                                                                         
 .xt.prop._ZNSt8_Rb_treeI6StringSt4pairIKS0_mESt10_Select1stIS3_ESt4lessIS0_ESaIS3_EE22_M_emplace_hint_uniqueIJRKSt21piecewise_construct_tSt5tupleIJRS2_EESE_IJEEEEESt17_Rb_tree_iteratorIS3_ESt23_Rb_tree_const_iteratorIS3_EDpOT_                            120            0
 .xt.prop._ZNSt3mapI6StringmSt4lessIS0_ESaISt4pairIKS0_mEEEixERS4_                                                                                                                                                                                             132            0
 .xt.prop._ZN13GrafanaLogger14_throttleCheckERK6Stringj                                                                                                                                                                                                        108            0
-.xt.prop._ZN13GrafanaLogger8sendNtfyERK6String                                                                                                                                                                                                                420            0
-.xt.prop._ZN13GrafanaLogger13_probeGrafanaEv                                                                                                                                                                                                                  276            0
+.xt.prop._ZN13GrafanaLogger8sendNtfyERK6StringS2_j                                                                                                                                                                                                            396            0
+.xt.prop._ZN13GrafanaLogger13_probeGrafanaEv                                                                                                                                                                                                                  324            0
 .xt.prop._ZNK11ArduinoJson8V741PB226detail14VariantRefBaseINS0_11JsonVariantEE2asIhEET_v                                                                                                                                                                       36            0
 .xt.prop._ZN11ArduinoJson8V741PB229ConverterIivE8fromJsonENS0_16JsonVariantConstE                                                                                                                                                                              48            0
 .xt.prop._ZN11ArduinoJson8V741PB226detailorIiLi0EEET_RKNS0_16JsonVariantConstERKS3_                                                                                                                                                                            60            0
@@ -1008,7 +1008,7 @@ section                                                                         
 .xt.prop._ZNK11ArduinoJson8V741PB226detail14VariantRefBaseINS1_11MemberProxyIRNS0_12JsonDocumentENS1_9RamStringEEEE2asINS0_9JsonArrayEEET_v                                                                                                                    36            0
 .xt.prop._ZNSt20__uninitialized_copyILb0EE13__uninit_copyIPK6StringPS2_EET0_T_S7_S6_                                                                                                                                                                          108            0
 .xt.prop._ZNSt6vectorI6StringSaIS0_EE17_M_realloc_insertIJRKS0_EEEvN9__gnu_cxx17__normal_iteratorIPS0_S2_EEDpOT_                                                                                                                                              204            0
-.xt.prop._ZN13GrafanaLogger8addErrorERK6StringS2_j                                                                                                                                                                                                            312            0
+.xt.prop._ZN13GrafanaLogger8addErrorERK6StringS2_j                                                                                                                                                                                                            336            0
 .xt.prop._ZNK11ArduinoJson8V741PB226detail14VariantRefBaseINS1_11MemberProxyINS0_10JsonObjectENS1_9RamStringEEEE2asIiEET_v                                                                                                                                     36            0
 .xt.prop._ZN11ArduinoJson8V741PB226detailorIiLi0EEET_RKNS1_11MemberProxyINS0_10JsonObjectENS1_9RamStringEEERKS3_                                                                                                                                               60            0
 .xt.prop._ZN11ArduinoJson8V741PB226detailorIbLi0EEET_RKNS1_11MemberProxyINS0_10JsonObjectENS1_9RamStringEEERKS3_                                                                                                                                               60            0
@@ -1043,7 +1043,7 @@ section                                                                         
 .xt.prop._ZN16ModbusSensorBaseILh7EE4initEv                                                                                                                                                                                                                   108            0
 .xt.prop._ZN16ModbusSensorBaseILh7EE4readEv                                                                                                                                                                                                                   108            0
 .xt.prop._ZN13GrafanaLogger15_sendGrafanaLogERK6String                                                                                                                                                                                                        420            0
-.xt.prop._ZN13GrafanaLogger4tickEv                                                                                                                                                                                                                            156            0
+.xt.prop._ZN13GrafanaLogger4tickEv                                                                                                                                                                                                                            180            0
 .xt.prop._ZN17ModbusRTUTemplate11eventSourceEv                                                                                                                                                                                                                 36            0
 .xt.prop._ZNK9IActuator9getStatusEv                                                                                                                                                                                                                            36            0
 .xt.prop._ZN12ActuatorBase9configureEjj                                                                                                                                                                                                                        36            0
@@ -1306,8 +1306,8 @@ section                                                                         
 .xt.lit._ZN13GrafanaLogger19_maybeNotifyLowHeapEv                                                                                                                                                                                                               8            0
 .xt.lit._ZN13GrafanaLogger7_doPostERK6String                                                                                                                                                                                                                    8            0
 .xt.lit._ZN13GrafanaLogger8safePostERK6StringS2_                                                                                                                                                                                                                8            0
-.xt.prop._ZN13GrafanaLogger19_maybeNotifyLowHeapEv                                                                                                                                                                                                             96            0
-.xt.prop._ZN13GrafanaLogger7_doPostERK6String                                                                                                                                                                                                                 324            0
+.xt.prop._ZN13GrafanaLogger19_maybeNotifyLowHeapEv                                                                                                                                                                                                            108            0
+.xt.prop._ZN13GrafanaLogger7_doPostERK6String                                                                                                                                                                                                                 348            0
 .xt.prop._ZN13GrafanaLogger8safePostERK6StringS2_                                                                                                                                                                                                             144            0
 .xt.prop._ZN5Print17availableForWriteEv                                                                                                                                                                                                                        36            0
 .xt.prop._ZN6Stream9readBytesEPhj                                                                                                                                                                                                                              36            0
@@ -1717,14 +1717,14 @@ section                                                                         
 .xt.prop._ZTI3UDP                                                                                                                                                                                                                                              12            0
 .xt.prop._ZTI7WiFiUDP                                                                                                                                                                                                                                          12            0
 .xt.prop._ZTV7WiFiUDP                                                                                                                                                                                                                                          12            0
-.debug_info                                                                                                                                                                                                                                              11255837            0
+.debug_info                                                                                                                                                                                                                                              11256510            0
 .debug_abbrev                                                                                                                                                                                                                                              734164            0
 .debug_aranges                                                                                                                                                                                                                                              81376            0
-.debug_line                                                                                                                                                                                                                                               3901141            0
-.debug_str                                                                                                                                                                                                                                                1210241            0
+.debug_line                                                                                                                                                                                                                                               3901601            0
+.debug_str                                                                                                                                                                                                                                                1210268            0
 .debug_frame                                                                                                                                                                                                                                               217508            0
-.debug_loc                                                                                                                                                                                                                                                2038444            0
-.debug_ranges                                                                                                                                                                                                                                              292912            0
-Total                                                                                                                                                                                                                                                    21951650
+.debug_loc                                                                                                                                                                                                                                                2039086            0
+.debug_ranges                                                                                                                                                                                                                                              292920            0
+Total                                                                                                                                                                                                                                                    21953944
 
 

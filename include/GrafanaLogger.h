@@ -151,8 +151,8 @@ public:
             DBG_INFO("[GrafanaLogger] Sending reset report: %s\n", msg.c_str());
             // Send to Grafana as "log" measurement (mirrors log.lua send_to_grafana)
             _sendGrafanaLog(msg);
-            // Send to NTFY independently (won't affect Grafana state on failure)
-            sendNtfy("\xF0\x9F\x94\x84 " + msg);  // 🔄 emoji
+            // Send to NTFY independently (one-time event — dedicated key, no throttle)
+            sendNtfy("\xF0\x9F\x94\x84 " + msg, "_ntfy_reset_", 0);
         }
 
         // Periodically re-confirm Grafana is still reachable
@@ -175,9 +175,14 @@ public:
      *   - Grafana down (LAN gone)  → NTFY still sends if internet is reachable
      *   - NTFY down (ntfy.sh gone) → Grafana still sends, NTFY silently skips
      *
-     * @param message  Plain-text message
+     * @param message      Plain-text message
+     * @param throttleKey  Per-event throttle key — different event types use
+     *                     different keys so they never block each other.
+     * @param throttleMs   Minimum ms between sends for this key (0 = no throttle)
      */
-    void sendNtfy(const String& message) {
+    void sendNtfy(const String& message,
+                  const String& throttleKey = "_ntfy_",
+                  uint32_t throttleMs = 30000) {
         if (!_initialized) begin();
         if (_ntfyUrl.isEmpty()) return;
 
@@ -185,8 +190,9 @@ public:
         if (WiFi.status() != WL_CONNECTED) return;
         if (ESP.getFreeHeap() < GRAFANA_MIN_HEAP_BYTES) return;
 
-        // NTFY has its OWN throttle key — independent of Grafana throttle
-        if (!_throttleCheck("_ntfy_", 30000)) return;
+        // NTFY has its OWN throttle key — each event type passes its own key
+        // so different alerts never block each other
+        if (throttleMs > 0 && !_throttleCheck(throttleKey, throttleMs)) return;
 
         // NTFY has its OWN back-off — if ntfy.sh is down, skip silently
         // without affecting Grafana reachability state at all
@@ -238,12 +244,12 @@ public:
         if (vec.size() >= 2) vec.erase(vec.begin());
         vec.push_back(message);
 
-        // Throttle notifications
+        // Per-type throttle key so errors of different types don't block each other
         String key = "_err_" + errorType;
         if (!_throttleCheck(key, intervalMs)) return;
 
         String alert = "[" + errorType + "] " + message;
-        sendNtfy(alert);
+        sendNtfy(alert, "_ntfy_err_" + errorType, 0); // throttle handled above
         DBG_ERROR("[GrafanaLogger] Error(%s): %s\n",
                   errorType.c_str(), message.c_str());
     }
@@ -380,7 +386,8 @@ private:
             _backoffMs        = GRAFANA_BACKOFF_INITIAL_MS;
             _nextRetryMs      = 0;
             DBG_INFO("[GrafanaLogger] Grafana reconnected (HTTP %d)\n", code);
-            sendNtfy("✅ Grafana reconnected after downtime");
+            sendNtfy("\xE2\x9C\x85 Grafana reconnected after downtime",
+                     "_ntfy_g_up_", 60000);
 
         } else if (!reachable) {
             _failureCount++;
@@ -396,9 +403,10 @@ private:
             DBG_ERROR("[GrafanaLogger] Grafana unreachable (attempt %d), back-off %lus\n",
                       _failureCount, (unsigned long)(_backoffMs / 1000));
 
-            // Only notify once on first failure (edge-detect)
+            // Only notify once on first failure (edge-detect) — use dedicated key
             if (_failureCount == 1) {
-                sendNtfy("⚠️ Grafana unreachable — data sends paused");
+                sendNtfy("\xE2\x9A\xA0\xEF\xB8\x8F Grafana unreachable \xE2\x80\x94 data sends paused",
+                         "_ntfy_g_down_", 60000);
             }
         }
     }
@@ -439,7 +447,8 @@ private:
                 _failureCount     = 1;
                 _backoffMs        = GRAFANA_BACKOFF_INITIAL_MS;
                 _nextRetryMs      = millis() + _backoffMs;
-                sendNtfy("⚠️ Grafana unreachable — data sends paused");
+                sendNtfy("\xE2\x9A\xA0\xEF\xB8\x8F Grafana unreachable \xE2\x80\x94 data sends paused",
+                         "_ntfy_g_down_", 60000);
             }
         }
         return false;
@@ -452,7 +461,8 @@ private:
         unsigned long now = millis();
         if (now - _lastLowHeapNotify > 300000UL) {
             _lastLowHeapNotify = now;
-            sendNtfy("🔴 Low heap: " + String(ESP.getFreeHeap()) + " bytes");
+            sendNtfy("\xF0\x9F\x94\xB4 Low heap: " + String(ESP.getFreeHeap()) + " bytes",
+                     "_ntfy_heap_", 300000);
         }
     }
     /**
