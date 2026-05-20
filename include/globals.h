@@ -17,4 +17,8 @@ extern WiFiClient client;
 extern HTTPClient http;
 extern SecretManager secrets;
 
+// Runtime Grafana connection settings (loaded from config.json, editable from UI)
+extern String grafanaUrl;
+extern String grafanaToken;
+
 #endif // GLOBALS_H

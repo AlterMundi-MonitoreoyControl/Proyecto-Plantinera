@@ -9,3 +9,7 @@ WiFiManager wifiManager;
 WiFiClientSecure clientSecure;
 WiFiClient client;
 SecretManager secrets;
+
+// Runtime Grafana settings — populated from config.json in setup()
+String grafanaUrl;
+String grafanaToken;
