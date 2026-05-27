@@ -25,7 +25,7 @@ def draw_i2c_sensors():
             ],
             edgepadW=0.5, edgepadH=1.5,
             pinspacing=1.5, lsize=12,
-        ).label('ESP32 S v1.1', loc='center', fontsize=11))
+        ).label('ESP32\nDevKit V1', loc='center', fontsize=11))
 
         # Alimentación ESP32 — a la izquierda del IC, sin superposición
         d.add(elm.Vdd().at((esp.SDA21[0] - 3.5, esp.SDA21[1])).label('3.3V'))
@@ -392,7 +392,7 @@ def draw_full_system():
         esp_cx, esp_cy = 0, 0
 
         esp_box = d.add(flow.Box(w=esp_w, h=esp_h).at((esp_cx, esp_cy)).label(
-            'ESP32 S v1.1\n32 pines\n\nWiFi / ESP-NOW\nWeb Server\nGrafana / InfluxDB'))
+            'ESP32 DevKit V1\n30 pines\n\nWiFi / ESP-NOW\nWeb Server\nGrafana / InfluxDB'))
 
         # Anchors del ESP32
         esp_left_x  = esp_box.W[0]
@@ -451,79 +451,87 @@ def draw_full_system():
 
 
 # ---------------------------------------------------------------------------
-# 6. Pinout ESP32 S v1.1
+# 6. Pinout ESP32 DevKit V1 (30 pines, esp32dev / ESP32-WROOM-32)
 # ---------------------------------------------------------------------------
 def draw_esp32_pinout():
     with schemdraw.Drawing(file=os.path.join(OUT, 'sch_esp32_pinout.svg'), show=False) as d:
         d.config(fontsize=9, unit=3)
 
+        # Orden FÍSICO real del DevKit V1 de 30 pines (15/lado), top -> bottom.
+        # Cada entrada: (anchorname, etiqueta_mostrada, funcion, color)
         pins_left = [
-            ('3V3',    '3.3V Power',     'red'),
-            ('EN',     'Reset/Enable',   'gray'),
-            ('GPIO36', 'ADC1_CH0 (VP)',  'gray'),
-            ('GPIO39', 'ADC1_CH3 (VN)', 'gray'),
-            ('GPIO34', 'Capacitivo IN',  'blue'),
-            ('GPIO35', 'HD38 IN  !!',    'red'),
-            ('GPIO32', '—',              'gray'),
-            ('GPIO33', '—',              'gray'),
-            ('GPIO25', '—',              'gray'),
-            ('GPIO26', '—',              'gray'),
-            ('GPIO27', '—',              'gray'),
-            ('GPIO14', '—',              'gray'),
-            ('GPIO12', '—',              'gray'),
-            ('GND1',   'GND',            'black'),
-            ('GPIO13', '—',              'gray'),
-            ('VIN',    '5V Input',       'red'),
+            ('EN',     'EN',     'Reset / Enable',  'gray'),
+            ('GPIO36', 'GPIO36', 'ADC1_CH0 (VP)',   'gray'),
+            ('GPIO39', 'GPIO39', 'ADC1_CH3 (VN)',   'gray'),
+            ('GPIO34', 'GPIO34', 'Capacitivo IN',   'blue'),
+            ('GPIO35', 'GPIO35', 'HD38 IN  !!',     'red'),
+            ('GPIO32', 'GPIO32', '—',               'gray'),
+            ('GPIO33', 'GPIO33', '—',               'gray'),
+            ('GPIO25', 'GPIO25', '—',               'gray'),
+            ('GPIO26', 'GPIO26', '—',               'gray'),
+            ('GPIO27', 'GPIO27', '—',               'gray'),
+            ('GPIO14', 'GPIO14', '—',               'gray'),
+            ('GPIO12', 'GPIO12', '—',               'gray'),
+            ('GPIO13', 'GPIO13', '—',               'gray'),
+            ('GNDL',   'GND',    'GND',             'black'),
+            ('VIN',    'VIN',    '5V Input',        'red'),
         ]
         pins_right = [
-            ('GPIO23', '—',              'gray'),
-            ('GPIO22', 'SCL (I2C)',      'blue'),
-            ('TX0',    'Serial TX0',     'gray'),
-            ('RX0',    'Serial RX0',     'gray'),
-            ('GPIO21', 'SDA (I2C)',      'blue'),
-            ('GND2',   'GND',            'black'),
-            ('GPIO19', '—',              'gray'),
-            ('GPIO18', 'DE/RE RS485',    'orange'),
-            ('GPIO5',  '—',              'gray'),
-            ('GPIO17', 'RS485 TX',       'orange'),
-            ('GPIO16', 'RS485 RX',       'orange'),
-            ('GPIO4',  '1-Wire',         'purple'),
-            ('GPIO0',  'Boot button',    'gray'),
-            ('GPIO2',  'LED interno',    'gray'),
-            ('GPIO15', '—',              'gray'),
-            ('GND3',   'GND',            'black'),
+            ('GPIO23', 'GPIO23', '—',               'gray'),
+            ('GPIO22', 'GPIO22', 'SCL (I2C)',       'blue'),
+            ('TX0',    'TX0',    'Serial TX0',      'gray'),
+            ('RX0',    'RX0',    'Serial RX0',      'gray'),
+            ('GPIO21', 'GPIO21', 'SDA (I2C)',       'blue'),
+            ('GPIO19', 'GPIO19', '—',               'gray'),
+            ('GPIO18', 'GPIO18', 'DE/RE RS485',     'orange'),
+            ('GPIO5',  'GPIO5',  '—',               'gray'),
+            ('GPIO17', 'GPIO17', 'RS485 TX (TX2)',  'orange'),
+            ('GPIO16', 'GPIO16', 'RS485 RX (RX2)',  'orange'),
+            ('GPIO4',  'GPIO4',  '1-Wire',          'purple'),
+            ('GPIO2',  'GPIO2',  'LED interno',     'gray'),
+            ('GPIO15', 'GPIO15', '—',               'gray'),
+            ('GNDR',   'GND',    'GND',             'black'),
+            ('3V3',    '3V3',    '3.3V Power',      'red'),
         ]
 
+        # slot '1/N' = abajo, 'N/N' = arriba. Las listas están en orden
+        # top->bottom, así que invertimos: índice 0 -> slot N (arriba).
+        nL = len(pins_left)
+        nR = len(pins_right)
         ic_pins = []
-        for i, (name, _, _) in enumerate(pins_left):
-            ic_pins.append(elm.IcPin(name=name, side='left',
-                                     slot=f'{i + 1}/{len(pins_left)}'))
-        for i, (name, _, _) in enumerate(pins_right):
-            ic_pins.append(elm.IcPin(name=name, side='right',
-                                     slot=f'{i + 1}/{len(pins_right)}'))
+        for i, (anchor, disp, _, _) in enumerate(pins_left):
+            ic_pins.append(elm.IcPin(name=disp, anchorname=anchor, side='left',
+                                     slot=f'{nL - i}/{nL}'))
+        for i, (anchor, disp, _, _) in enumerate(pins_right):
+            ic_pins.append(elm.IcPin(name=disp, anchorname=anchor, side='right',
+                                     slot=f'{nR - i}/{nR}'))
 
         esp = d.add(elm.Ic(
             pins=ic_pins,
             edgepadW=1.2, edgepadH=0.3,
             pinspacing=0.9, lsize=12,
-        ).label('ESP32\nS v1.1', loc='center', fontsize=11))
+        ))
+        # Título arriba del IC (centro vacío para no tocar los pines)
+        d.add(elm.Label().at((esp.center[0], getattr(esp, 'EN')[1] + 1.3))
+              .label('ESP32 DevKit V1', fontsize=12))
 
-        for name, func, color in pins_left:
-            pin_pos = getattr(esp, name)
+        for anchor, _, func, color in pins_left:
+            pin_pos = getattr(esp, anchor)
             d.add(elm.Label().at((pin_pos[0] - 4.2, pin_pos[1]))
                   .label(func, fontsize=7, color=color))
 
-        for name, func, color in pins_right:
-            pin_pos = getattr(esp, name)
+        for anchor, _, func, color in pins_right:
+            pin_pos = getattr(esp, anchor)
             d.add(elm.Label().at((pin_pos[0] + 4.2, pin_pos[1]))
                   .label(func, fontsize=7, color=color))
 
-        # Leyenda — debajo del pin más bajo (3V3 / GPIO23, slot inferior)
-        legend_y = getattr(esp, '3V3')[1] - 2.5
+        # Leyenda — debajo del pin más bajo (VIN / 3V3, slot inferior)
+        legend_y = getattr(esp, 'VIN')[1] - 2.5
         d.add(elm.Label().at((esp.center[0], legend_y))
               .label('Azul: I2C (GPIO21/22)  Naranja: RS485 (GPIO16/17/18)  Violeta: 1-Wire (GPIO4)\n'
                      'Rojo: GPIO35 requiere proteccion (HD38 5V -> Schottky clamp a 3.3V y GND)\n'
-                     'ADC1 (GPIO32-39) funciona con WiFi  •  NO usar ADC2 con WiFi activo',
+                     'ADC1 (GPIO32-39) funciona con WiFi  •  NO usar ADC2 con WiFi activo\n'
+                     'Placa: ESP32 DevKit V1 / WROOM-32 (board=esp32dev) — 30 pines, 15/lado',
                      fontsize=8, color='gray'))
 
     print('  ✓ sch_esp32_pinout.svg')

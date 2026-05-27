@@ -1,8 +1,8 @@
 # Proyecto Plantinera — Documentación de Hardware
 
-Esquemáticos y guía de montaje para el sistema de monitoreo ESP32 S v1.1 (32 pines físicos: 16 por lado, 3×GND).
+Esquemáticos y guía de montaje para el sistema de monitoreo basado en **ESP32 DevKit V1** (ESP32-WROOM-32, `board=esp32dev`): 30 pines, 15 por lado, 2×GND.
 
-> **Nota de variante de placa**: el DevKit "ESP32 S v1.1" expone 32 pines (16 por lado). Verificar contra la serigrafía física si la placa tiene diferente número de GND o pines de alimentación.
+> **Nota de variante de placa**: el pinout corresponde al **DevKit V1 / NodeMCU de 30 pines**. Si tu placa es la variante de 38 pines (NodeMCU-32S), el orden físico difiere — verificar contra la serigrafía. Las asignaciones GPIO↔función (I2C 21/22, OneWire 4, ADC 34/35, RS485 16/17/18) provienen del firmware y son las mismas en cualquier variante.
 
 ## 📌 Tabla de Pinout
 
@@ -64,7 +64,7 @@ Esquemáticos y guía de montaje para el sistema de monitoreo ESP32 S v1.1 (32 p
 ### Diagrama General del Sistema
 ![Diagrama de bloques del sistema completo](schematics/sch_full_system.svg)
 
-### Pinout ESP32 S v1.1
+### Pinout ESP32 DevKit V1
 ![Pinout del ESP32 con funciones asignadas](schematics/sch_esp32_pinout.svg)
 
 ### Bus I2C — SCD30 + BME280
@@ -85,7 +85,7 @@ Esquemáticos y guía de montaje para el sistema de monitoreo ESP32 S v1.1 (32 p
 
 | # | Componente | Cantidad | Especificaciones | Función |
 |---|-----------|----------|-----------------|---------|
-| 1 | ESP32 S v1.1 DevKit | 1 | 31 pines, WiFi+BT | MCU principal |
+| 1 | ESP32 DevKit V1 (WROOM-32) | 1 | 30 pines, WiFi+BT | MCU principal |
 | 2 | Zócalo con bornes a tornillo | 1 | 2×16 pines, paso 2.54mm | Montaje ESP32 |
 | 3 | SCD30 | 1 | I2C, 3.3V, Sensirion | CO₂ / Temp / Humedad |
 | 4 | BME280 | 0-1 | I2C, 3.3V, Bosch | Temp / Humedad / Presión |
