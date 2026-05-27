@@ -28,7 +28,7 @@ void createConfigFile() {
     config["min_temperature"] = 37.3;
     config["rotation_duration"] = 50000;
     config["rotation_period"] = 3600000;
-    config["ssid"] = "default";
+    config["ssid"] = "";
     config["passwd"] = "";
     config["tray_one_date"] = 0;
     config["tray_two_date"] = 0;
