@@ -49,6 +49,33 @@ extern ESPNowManager espnowMgr;
 extern RelayManager relayMgr;
 extern ControlMediator mediator;
 
+// Helper used by /actual to populate legacy flat fields (a_temperature, a_humidity, ...)
+// expected by the LibreAgro app. It walks the freshly built doc["sensors"] array and
+// returns the first reading whose key_var matches, falling back to a label substring
+// match. Returns "--" when nothing is available so the field type stays string.
+static String pickLegacyValue(JsonArray groups, uint8_t keyVar, const char *labelHint) {
+  for (JsonObject g : groups) {
+    JsonArray readings = g["readings"].as<JsonArray>();
+    for (JsonObject r : readings) {
+      if (r["key_var"].is<int>() && (uint8_t)(int)r["key_var"] == keyVar) {
+        const char *value = r["value"];
+        if (value && *value) return String(value);
+      }
+    }
+  }
+  for (JsonObject g : groups) {
+    JsonArray readings = g["readings"].as<JsonArray>();
+    for (JsonObject r : readings) {
+      const char *label = r["label"];
+      if (label && strstr(label, labelHint)) {
+        const char *value = r["value"];
+        if (value && *value) return String(value);
+      }
+    }
+  }
+  return "--";
+}
+
 // Helper to get sensor icon based on capabilities
 String getSensorIcon(ISensor *s) {
 #ifdef SENSOR_MULTI
@@ -334,9 +361,39 @@ void handleMediciones() {
     in2["key_var"] = (uint8_t)SensorVariable::DIGITAL_IN_2;
   }
 
-  // Legacy fields for backward compatibility (optional, but good practice)
-  // We can populate them from the first sensor found, or leave empty.
+  // Legacy flat fields for the LibreAgro mobile app (kept alongside sensors[]).
+  // The app's mapSensorDataResponse validates these as strings, so missing values
+  // must be "--", never null/empty.
   doc["wifi_status"] = wifiStatus;
+  {
+    JsonArray builtSensors = doc["sensors"].as<JsonArray>();
+    doc["a_temperature"] = pickLegacyValue(
+        builtSensors, (uint8_t)SensorVariable::TEMPERATURE, "Temp");
+    doc["a_humidity"] = pickLegacyValue(
+        builtSensors, (uint8_t)SensorVariable::HUMIDITY, "Humedad");
+    doc["a_co2"] = pickLegacyValue(
+        builtSensors, (uint8_t)SensorVariable::CO2, "CO2");
+    doc["a_pressure"] = pickLegacyValue(
+        builtSensors, (uint8_t)SensorVariable::PRESSURE, "Pres");
+
+    JsonObject errors = doc["errors"].to<JsonObject>();
+    errors["temperature"].to<JsonArray>();
+    errors["humidity"].to<JsonArray>();
+    JsonArray sensorsErr = errors["sensors"].to<JsonArray>();
+    JsonArray wifiErr = errors["wifi"].to<JsonArray>();
+    errors["rotation"].to<JsonArray>();
+
+#ifdef SENSOR_MULTI
+    for (auto *s : getSensorList()) {
+      if (s && !s->isActive()) sensorsErr.add(s->getSensorID());
+    }
+#else
+    if (sensor && !sensor->isActive()) sensorsErr.add(sensor->getSensorID());
+#endif
+    if (WiFi.status() != WL_CONNECTED) {
+      wifiErr.add("wifi");
+    }
+  }
 
   // Add Uptime for Live Data page
   unsigned long uptimeSec = millis() / 1000;
