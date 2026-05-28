@@ -3,33 +3,33 @@
                         BUILD MEMORY REPORT
 ================================================================================
 Environment: esp32dev_multi
-Git version: 2e0f96c043db08f4231d98e665900a36086d223a
+Git version: c7865e2a65bb429b99bbca7e52d0b982496f1f7f
 MCU:         esp32
-Timestamp:   2026-05-19 16:53:52
+Timestamp:   2026-05-27 13:24:56
 Firmware:    firmware.elf
 Partitions:  min_spiffs.csv
 --------------------------------------------------------------------------------
 
 MEMORY USAGE (matches PlatformIO):
-  Flash: [======              ]  34.0%  (used 1,424,200 / 4,194,304 bytes)
-  RAM:   [====================] 125.6%  (used 411,485 / 327,680 bytes)
+  Flash: [======              ]  34.0%  (used 1,424,184 / 4,194,304 bytes)
+  RAM:   [====================] 125.6%  (used 411,469 / 327,680 bytes)
 
 --------------------------------------------------------------------------------
 FLASH BREAKDOWN:
   .text (code):         1,044,636 bytes
-  .data (init vars):      379,564 bytes
+  .data (init vars):      379,548 bytes
   ─────────────────────────────────
-  Program size:         1,424,200 bytes
+  Program size:         1,424,184 bytes
   App partition:        4,194,304 bytes
-  Free in partition:    2,770,104 bytes
+  Free in partition:    2,770,120 bytes
 
 RAM BREAKDOWN:
-  .data (init vars):      379,564 bytes
+  .data (init vars):      379,548 bytes
   .bss (zero vars):        31,921 bytes
   ─────────────────────────────────
-  Static RAM:             411,485 bytes
+  Static RAM:             411,469 bytes
   Total DRAM:             327,680 bytes
-  Free (static):          -83,805 bytes
+  Free (static):          -83,789 bytes
 
 --------------------------------------------------------------------------------
 FLASH CHIP LAYOUT (4MB total):
@@ -50,84 +50,84 @@ BY FLASH USAGE:
 1    src/web_assets.cpp.o                                       116,700         28    116,728
 2    src/main.cpp.o                                              88,153         24     88,177
 3    src/endpoints.cpp.o                                         52,720         32     52,752
-4    lib9da/WifiManager/WiFiManager.cpp.o                        24,326          0     24,326
-5    lib2b4/WebServer/WebServer.cpp.o                            22,118          0     22,118
+4    lib4c4/WifiManager/WiFiManager.cpp.o                        24,326          0     24,326
+5    lib7d1/WebServer/WebServer.cpp.o                            22,116          0     22,116
 6    src/configFile.cpp.o                                        20,952         28     20,980
-7    lib2ca/HTTPClient/HTTPClient.cpp.o                          20,068          0     20,068
-8    lib651/WiFi/WiFiGeneric.cpp.o                               18,484         22     18,506
-9    lib2b4/WebServer/Parsing.cpp.o                              12,228        132     12,360
-10   libc1a/modbus-esp8266/Modbus.cpp.o                          10,438          8     10,446
-11   liba6f/Preferences/Preferences.cpp.o                         9,214         52      9,266
-12   lib692/FS/vfs_api.cpp.o                                      9,010          0      9,010
-13   FrameworkArduino/esp32-hal-uart.c.o                          8,726         96      8,822
-14   lib065/HTTPUpdate/HTTPUpdate.cpp.o                           8,341          8      8,349
-15   lib9a2/Wire/Wire.cpp.o                                       8,284          8      8,292
-16   lib651/WiFi/WiFiClient.cpp.o                                 8,092          0      8,092
-17   FrameworkArduino/WString.cpp.o                               7,753          8      7,761
-18   lib651/WiFi/WiFiSTA.cpp.o                                    7,743          9      7,752
+7    lib0ab/HTTPClient/HTTPClient.cpp.o                          20,067          0     20,067
+8    lib33e/WiFi/WiFiGeneric.cpp.o                               18,483         22     18,505
+9    lib7d1/WebServer/Parsing.cpp.o                              12,227        132     12,359
+10   libac1/modbus-esp8266/Modbus.cpp.o                          10,438          8     10,446
+11   libe61/Preferences/Preferences.cpp.o                         9,213         52      9,265
+12   lib580/FS/vfs_api.cpp.o                                      9,009          0      9,009
+13   FrameworkArduino/esp32-hal-uart.c.o                          8,724         96      8,820
+14   lib395/HTTPUpdate/HTTPUpdate.cpp.o                           8,340          8      8,348
+15   lib678/Wire/Wire.cpp.o                                       8,283          8      8,291
+16   lib33e/WiFi/WiFiClient.cpp.o                                 8,091          0      8,091
+17   FrameworkArduino/WString.cpp.o                               7,752          8      7,760
+18   lib33e/WiFi/WiFiSTA.cpp.o                                    7,742          9      7,751
 19   src/sendDataGrafana.cpp.o                                    7,307          0      7,307
-20   lib45a/ArduinoOTA/ArduinoOTA.cpp.o                           7,128          8      7,136
-21   libbcf/WiFiClientSecure/ssl_client.cpp.o                     6,707          4      6,711
-22   FrameworkArduino/esp32-hal-i2c-slave.c.o                     6,536         96      6,632
+20   lib933/ArduinoOTA/ArduinoOTA.cpp.o                           7,127          8      7,135
+21   libb69/WiFiClientSecure/ssl_client.cpp.o                     6,706          4      6,710
+22   FrameworkArduino/esp32-hal-i2c-slave.c.o                     6,534         96      6,630
 23   FrameworkArduino/esp32-hal-spi.c.o                           6,451         48      6,499
-24   lib826/DallasTemperature/DallasTemperature.cpp.o             5,783          0      5,783
-25   liba99/ESPmDNS/ESPmDNS.cpp.o                                 5,622          8      5,630
+24   lib995/DallasTemperature/DallasTemperature.cpp.o             5,783          0      5,783
+25   libc58/ESPmDNS/ESPmDNS.cpp.o                                 5,621          8      5,629
 26   src/otaUpdater.cpp.o                                         5,560          0      5,560
-27   FrameworkArduino/HardwareSerial.cpp.o                        5,471          8      5,479
-28   libc3d/Adafruit BME280 Library/Adafruit_BME280.cpp.o         4,955          0      4,955
-29   libd28/Update/Updater.cpp.o                                  4,208          8      4,216
-30   FrameworkArduino/esp32-hal-rmt.c.o                           3,833        320      4,153
-31   lib651/WiFi/WiFiUdp.cpp.o                                    4,041          0      4,041
-32   libbcf/WiFiClientSecure/WiFiClientSecure.cpp.o               3,491          0      3,491
-33   lib651/WiFi/WiFiAP.cpp.o                                     3,477          0      3,477
-34   FrameworkArduino/esp32-hal-i2c.c.o                           3,276          0      3,276
-35   FrameworkArduino/Esp.cpp.o                                   3,168          0      3,168
+27   FrameworkArduino/HardwareSerial.cpp.o                        5,470          8      5,478
+28   libca5/Adafruit BME280 Library/Adafruit_BME280.cpp.o         4,955          0      4,955
+29   lib048/Update/Updater.cpp.o                                  4,207          8      4,215
+30   FrameworkArduino/esp32-hal-rmt.c.o                           3,832        320      4,152
+31   lib33e/WiFi/WiFiUdp.cpp.o                                    4,040          0      4,040
+32   libb69/WiFiClientSecure/WiFiClientSecure.cpp.o               3,490          0      3,490
+33   lib33e/WiFi/WiFiAP.cpp.o                                     3,476          0      3,476
+34   FrameworkArduino/esp32-hal-i2c.c.o                           3,275          0      3,275
+35   FrameworkArduino/Esp.cpp.o                                   3,167          0      3,167
 36   FrameworkArduino/Print.cpp.o                                 2,946          0      2,946
-37   FrameworkArduino/esp32-hal-misc.c.o                          2,802          0      2,802
-38   libd2b/OneWire/OneWire.cpp.o                                 2,799          0      2,799
-39   FrameworkArduino/esp32-hal-ledc.c.o                          2,764          9      2,773
-40   lib987/Adafruit SCD30/Adafruit_SCD30.cpp.o                   2,762          0      2,762
-41   lib651/WiFi/WiFiMulti.cpp.o                                  2,607          0      2,607
-42   lib8a7/SPI/SPI.cpp.o                                         2,519          8      2,527
-43   libc1a/modbus-esp8266/ModbusRTU.cpp.o                        2,471          0      2,471
-44   lib692/FS/FS.cpp.o                                           2,463          0      2,463
-45   FrameworkArduino/esp32-hal-cpu.c.o                           2,447          0      2,447
-46   FrameworkArduino/esp32-hal-adc.c.o                           2,257          5      2,262
-47   liba66/DNSServer/DNSServer.cpp.o                             2,093          0      2,093
-48   FrameworkArduino/esp32-hal-timer.c.o                         2,079          8      2,087
-49   lib5c7/SPIFFS/SPIFFS.cpp.o                                   2,068          8      2,076
-50   libbcf/WiFiClientSecure/esp_crt_bundle.c.o                   1,999          0      1,999
-51   lib83a/Adafruit BusIO/Adafruit_SPIDevice.cpp.o               1,856          0      1,856
-52   lib7ad/Adafruit Unified Sensor/Adafruit_Sensor.cpp.o         1,847          0      1,847
+37   FrameworkArduino/esp32-hal-misc.c.o                          2,801          0      2,801
+38   libfdc/OneWire/OneWire.cpp.o                                 2,799          0      2,799
+39   FrameworkArduino/esp32-hal-ledc.c.o                          2,763          9      2,772
+40   lib41c/Adafruit SCD30/Adafruit_SCD30.cpp.o                   2,762          0      2,762
+41   lib33e/WiFi/WiFiMulti.cpp.o                                  2,606          0      2,606
+42   lib3dc/SPI/SPI.cpp.o                                         2,518          8      2,526
+43   libac1/modbus-esp8266/ModbusRTU.cpp.o                        2,471          0      2,471
+44   lib580/FS/FS.cpp.o                                           2,463          0      2,463
+45   FrameworkArduino/esp32-hal-cpu.c.o                           2,446          0      2,446
+46   FrameworkArduino/esp32-hal-adc.c.o                           2,256          5      2,261
+47   libaaf/DNSServer/DNSServer.cpp.o                             2,093          0      2,093
+48   FrameworkArduino/esp32-hal-timer.c.o                         2,078          8      2,086
+49   lib4b7/SPIFFS/SPIFFS.cpp.o                                   2,067          8      2,075
+50   libb69/WiFiClientSecure/esp_crt_bundle.c.o                   1,998          0      1,998
+51   lib2ca/Adafruit BusIO/Adafruit_SPIDevice.cpp.o               1,856          0      1,856
+52   libc51/Adafruit Unified Sensor/Adafruit_Sensor.cpp.o         1,847          0      1,847
 53   FrameworkArduino/Stream.cpp.o                                1,838          0      1,838
 54   src/createGrafanaMessage.cpp.o                               1,721          0      1,721
-55   FrameworkArduino/esp32-hal-gpio.c.o                          1,694          0      1,694
+55   FrameworkArduino/esp32-hal-gpio.c.o                          1,692          0      1,692
 56   FrameworkArduino/firmware_msc_fat.c.o                        1,342          0      1,342
-57   FrameworkArduino/esp32-hal-touch.c.o                         1,332          4      1,336
-58   lib83a/Adafruit BusIO/Adafruit_BusIO_Register.cpp.o          1,176          0      1,176
-59   lib651/WiFi/WiFiScan.cpp.o                                   1,162          4      1,166
-60   lib651/WiFi/WiFiServer.cpp.o                                 1,153          0      1,153
-61   lib2b4/WebServer/detail/mimetable.cpp.o                      1,104          0      1,104
+57   FrameworkArduino/esp32-hal-touch.c.o                         1,331          4      1,335
+58   lib2ca/Adafruit BusIO/Adafruit_BusIO_Register.cpp.o          1,176          0      1,176
+59   lib33e/WiFi/WiFiScan.cpp.o                                   1,162          4      1,166
+60   lib33e/WiFi/WiFiServer.cpp.o                                 1,153          0      1,153
+61   lib7d1/WebServer/detail/mimetable.cpp.o                      1,104          0      1,104
 62   FrameworkArduino/stdlib_noniso.c.o                           1,092          0      1,092
-63   FrameworkArduino/esp32-hal-bt.c.o                            1,019          0      1,019
-64   FrameworkArduino/Tone.cpp.o                                    979          0        979
+63   FrameworkArduino/esp32-hal-bt.c.o                            1,018          0      1,018
+64   FrameworkArduino/Tone.cpp.o                                    978          0        978
 65   FrameworkArduino/esp32-hal-time.c.o                            868          0        868
-66   libd28/Update/HttpsOTAUpdate.cpp.o                             853          0        853
+66   lib048/Update/HttpsOTAUpdate.cpp.o                             852          0        852
 67   FrameworkArduino/cbuf.cpp.o                                    785          0        785
-68   FrameworkArduino/IPv6Address.cpp.o                             704          0        704
-69   FrameworkArduino/MD5Builder.cpp.o                              704          0        704
+68   FrameworkArduino/MD5Builder.cpp.o                              704          0        704
+69   FrameworkArduino/IPv6Address.cpp.o                             704          0        704
 70   FrameworkArduino/StreamString.cpp.o                            667          0        667
 71   FrameworkArduino/IPAddress.cpp.o                               634          4        638
-72   lib83a/Adafruit BusIO/Adafruit_I2CDevice.cpp.o                 634          0        634
-73   lib651/WiFi/WiFi.cpp.o                                         592          4        596
+72   lib2ca/Adafruit BusIO/Adafruit_I2CDevice.cpp.o                 634          0        634
+73   lib33e/WiFi/WiFi.cpp.o                                         592          4        596
 74   FrameworkArduino/libb64/cdecode.c.o                            555          0        555
-75   FrameworkArduino/WMath.cpp.o                                   524          1        525
+75   FrameworkArduino/WMath.cpp.o                                   523          1        524
 76   FrameworkArduino/libb64/cencode.c.o                            466          0        466
-77   FrameworkArduino/esp32-hal-rgb-led.c.o                         453          0        453
+77   FrameworkArduino/esp32-hal-rgb-led.c.o                         452          0        452
 78   FrameworkArduino/base64.cpp.o                                  381          0        381
 79   FrameworkArduino/FunctionalInterrupt.cpp.o                     310          0        310
 80   FrameworkArduino/esp32-hal-sigmadelta.c.o                      282          0        282
-81   lib83a/Adafruit BusIO/Adafruit_GenericDevice.cpp.o             268          0        268
+81   lib2ca/Adafruit BusIO/Adafruit_GenericDevice.cpp.o             268          0        268
 82   FrameworkArduino/main.cpp.o                                    230          0        230
 83   src/constants.cpp.o                                            206         24        230
 84   src/globals.cpp.o                                              189          8        197
@@ -143,50 +143,50 @@ BY RAM USAGE:
 #    FILE                                                          DATA        BSS        RAM
 -----------------------------------------------------------------------------------------------
 1    src/main.cpp.o                                                  24      5,183      5,207
-2    lib45a/ArduinoOTA/ArduinoOTA.cpp.o                               8      1,692      1,700
+2    lib933/ArduinoOTA/ArduinoOTA.cpp.o                               8      1,692      1,700
 3    src/globals.cpp.o                                                8        652        660
 4    FrameworkArduino/esp32-hal-gpio.c.o                              0        481        481
 5    FrameworkArduino/esp32-hal-rmt.c.o                             320         36        356
-6    libbcf/WiFiClientSecure/esp_crt_bundle.c.o                       0        356        356
+6    libb69/WiFiClientSecure/esp_crt_bundle.c.o                       0        356        356
 7    FrameworkArduino/HardwareSerial.cpp.o                            8        228        236
-8    libd28/Update/Updater.cpp.o                                      8        180        188
+8    lib048/Update/Updater.cpp.o                                      8        180        188
 9    FrameworkArduino/esp32-hal-adc.c.o                               5        164        169
 10   FrameworkArduino/esp32-hal-uart.c.o                             96         69        165
-11   lib9a2/Wire/Wire.cpp.o                                           8        152        160
-12   libd28/Update/HttpsOTAUpdate.cpp.o                               0        145        145
+11   lib678/Wire/Wire.cpp.o                                           8        152        160
+12   lib048/Update/HttpsOTAUpdate.cpp.o                               0        145        145
 13   src/sendDataGrafana.cpp.o                                        0        136        136
 14   FrameworkArduino/esp32-hal-touch.c.o                             4        131        135
-15   lib2b4/WebServer/Parsing.cpp.o                                 132          0        132
-16   lib651/WiFi/WiFiGeneric.cpp.o                                   22         77         99
+15   lib7d1/WebServer/Parsing.cpp.o                                 132          0        132
+16   lib33e/WiFi/WiFiGeneric.cpp.o                                   22         77         99
 17   FrameworkArduino/esp32-hal-i2c-slave.c.o                        96          0         96
-18   lib065/HTTPUpdate/HTTPUpdate.cpp.o                               8         88         96
+18   lib395/HTTPUpdate/HTTPUpdate.cpp.o                               8         88         96
 19   src/endpoints.cpp.o                                             32         36         68
 20   FrameworkArduino/esp32-hal-ledc.c.o                              9         56         65
-21   liba6f/Preferences/Preferences.cpp.o                            52          0         52
-22   lib2ca/HTTPClient/HTTPClient.cpp.o                               0         52         52
-23   libc1a/modbus-esp8266/Modbus.cpp.o                               8         40         48
-24   FrameworkArduino/esp32-hal-spi.c.o                              48          0         48
+21   lib0ab/HTTPClient/HTTPClient.cpp.o                               0         52         52
+22   libe61/Preferences/Preferences.cpp.o                            52          0         52
+23   FrameworkArduino/esp32-hal-spi.c.o                              48          0         48
+24   libac1/modbus-esp8266/Modbus.cpp.o                               8         40         48
 25   FrameworkArduino/esp32-hal-sigmadelta.c.o                        0         40         40
-26   lib8a7/SPI/SPI.cpp.o                                             8         32         40
-27   lib651/WiFi/WiFiSTA.cpp.o                                        9         21         30
-28   liba99/ESPmDNS/ESPmDNS.cpp.o                                     8         20         28
-29   src/configFile.cpp.o                                            28          0         28
-30   src/web_assets.cpp.o                                            28          0         28
-31   FrameworkArduino/WString.cpp.o                                   8         17         25
-32   FrameworkArduino/Esp.cpp.o                                       0         25         25
+26   lib3dc/SPI/SPI.cpp.o                                             8         32         40
+27   lib33e/WiFi/WiFiSTA.cpp.o                                        9         21         30
+28   libc58/ESPmDNS/ESPmDNS.cpp.o                                     8         20         28
+29   src/web_assets.cpp.o                                            28          0         28
+30   src/configFile.cpp.o                                            28          0         28
+31   FrameworkArduino/Esp.cpp.o                                       0         25         25
+32   FrameworkArduino/WString.cpp.o                                   8         17         25
 33   FrameworkArduino/esp32-hal-i2c.c.o                               0         24         24
 34   src/constants.cpp.o                                             24          0         24
-35   lib5c7/SPIFFS/SPIFFS.cpp.o                                       8         12         20
-36   lib651/WiFi/WiFiScan.cpp.o                                       4         11         15
+35   lib4b7/SPIFFS/SPIFFS.cpp.o                                       8         12         20
+36   lib33e/WiFi/WiFiScan.cpp.o                                       4         11         15
 37   FrameworkArduino/IPAddress.cpp.o                                 4          8         12
 38   FrameworkArduino/Tone.cpp.o                                      0          9          9
 39   FrameworkArduino/esp32-hal-cpu.c.o                               0          9          9
 40   FrameworkArduino/esp32-hal-timer.c.o                             8          0          8
-41   FrameworkArduino/esp32-hal-rgb-led.c.o                           0          5          5
-42   FrameworkArduino/main.cpp.o                                      0          5          5
-43   lib651/WiFi/WiFi.cpp.o                                           4          1          5
-44   lib9da/WifiManager/WiFiManager.cpp.o                             0          4          4
-45   libbcf/WiFiClientSecure/ssl_client.cpp.o                         4          0          4
+41   FrameworkArduino/main.cpp.o                                      0          5          5
+42   FrameworkArduino/esp32-hal-rgb-led.c.o                           0          5          5
+43   lib33e/WiFi/WiFi.cpp.o                                           4          1          5
+44   libb69/WiFiClientSecure/ssl_client.cpp.o                         4          0          4
+45   lib4c4/WifiManager/WiFiManager.cpp.o                             0          4          4
 46   src/RelayModule2CH.cpp.o                                         0          2          2
 47   FrameworkArduino/WMath.cpp.o                                     1          0          1
 48   src/otaUpdater.cpp.o                                             0          1          1
@@ -209,8 +209,8 @@ section                                                                         
 .ext_ram.bss                                                                                                                                                                                                                                                    0   1065353216
 .dram0.bss                                                                                                                                                                                                                                                  31904   1073496432
 .flash.appdesc                                                                                                                                                                                                                                                256   1061158944
-.flash.rodata                                                                                                                                                                                                                                              353440   1061159200
-.flash.rodata_noload                                                                                                                                                                                                                                        15986   1061512640
+.flash.rodata                                                                                                                                                                                                                                              353424   1061159200
+.flash.rodata_noload                                                                                                                                                                                                                                        15986   1061512624
 .flash.text                                                                                                                                                                                                                                                935015   1074593824
 .phyiram.0                                                                                                                                                                                                                                                     43   1075528840
 .phyiram.1                                                                                                                                                                                                                                                    125   1075528884
@@ -1720,11 +1720,11 @@ section                                                                         
 .debug_info                                                                                                                                                                                                                                              11255837            0
 .debug_abbrev                                                                                                                                                                                                                                              734164            0
 .debug_aranges                                                                                                                                                                                                                                              81376            0
-.debug_line                                                                                                                                                                                                                                               3901141            0
-.debug_str                                                                                                                                                                                                                                                1210241            0
+.debug_line                                                                                                                                                                                                                                               3899391            0
+.debug_str                                                                                                                                                                                                                                                1210167            0
 .debug_frame                                                                                                                                                                                                                                               217508            0
 .debug_loc                                                                                                                                                                                                                                                2038444            0
 .debug_ranges                                                                                                                                                                                                                                              292912            0
-Total                                                                                                                                                                                                                                                    21951650
+Total                                                                                                                                                                                                                                                    21949810
 
 

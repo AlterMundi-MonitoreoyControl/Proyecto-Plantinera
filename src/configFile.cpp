@@ -51,6 +51,10 @@ void createConfigFile() {
     JsonObject cap1Cfg = cap1["config"].to<JsonObject>();
     cap1Cfg["pin"] = 34;
     cap1Cfg["name"] = "Soil1";
+    cap1Cfg["calib_mode"] = "linear"; // "linear" | "quadratic" (issue #19)
+    cap1Cfg["a"] = 0.0;
+    cap1Cfg["b"] = 0.0;
+    cap1Cfg["c"] = 0.0;
 
     JsonObject onewire = sensors.add<JsonObject>();
     onewire["type"] = "onewire";
@@ -149,6 +153,10 @@ JsonDocument loadConfig() {
       JsonObject capCfg = cap["config"].to<JsonObject>();
       capCfg["pin"] = 34;
       capCfg["name"] = "Soil1";
+      capCfg["calib_mode"] = "linear";
+      capCfg["a"] = 0.0;
+      capCfg["b"] = 0.0;
+      capCfg["c"] = 0.0;
 
       JsonObject onewire = sensors.add<JsonObject>();
       onewire["type"] = "onewire";

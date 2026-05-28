@@ -275,6 +275,23 @@ bool read() {
 - Wet: Sensor en agua → nota valor ADC
 - Ajustar mapeo en código si needed
 
+#### Modo de calibración: lineal vs cuadrática (issue #19)
+
+Los sensores ADC (`capacitive` y `hd38`) soportan dos modos de calibración seleccionables desde la UI o `config.json`:
+
+| Modo | Fórmula | Cuándo usarlo |
+|---|---|---|
+| **Lineal** (default) | `humedad = map(raw, dry, wet, 0, 100)` con clamp 0-100 | Sensor con respuesta razonablemente lineal entre seco y húmedo. Solo requiere los dos puntos `dry`/`wet`. |
+| **Cuadrática** | `humedad = a·raw² + b·raw + c` (sin clamp) | Sensor no lineal — captura la curva real con tres coeficientes que el usuario deriva externamente (ej. regresión cuadrática sobre pares `(raw, humedad_real)` medidos con un higrómetro de referencia). |
+
+**Cómo derivar `a`, `b`, `c`:** medir varios pares `(raw_ADC, humedad_real_%)` distribuidos por el rango (mínimo 3 puntos, idealmente 5-7), ajustar una parábola con cualquier herramienta de regresión:
+
+- Excel/LibreOffice: `=LINEST(y_range, x_range^{1,2})`
+- Python: `numpy.polyfit(x, y, 2)` → devuelve `[a, b, c]`
+- Calculadoras online de "quadratic regression"
+
+**Importante:** `raw` es el ADC bruto (0-4095). Para HD38 con `voltage_divider=true`, `raw` se trunca a 0-3100 antes de aplicar la curva — derivar los coeficientes con esa misma escala. La salida no se acota, así que coeficientes mal puestos pueden producir valores negativos o muy grandes (no daña el hardware, sí distorsiona Grafana).
+
 ### Config
 
 ```json
@@ -283,12 +300,18 @@ bool read() {
   "enabled": true,
   "config": {
     "pin": 34,
-    "name": "Soil1"
+    "name": "Soil1",
+    "calib_mode": "linear",
+    "a": 0,
+    "b": 0,
+    "c": 0
   }
 }
 ```
 
-**name:** Identificador del sensor (usado en logs, futuro multi-capacitive)
+- `calib_mode`: `"linear"` (usa `dry`/`wet`) o `"quadratic"` (usa `a`/`b`/`c`). Ausente o desconocido → `"linear"`.
+- `a`, `b`, `c`: coeficientes de la cuadrática (floats, pueden ser negativos). Ignorados si `calib_mode != "quadratic"`.
+- **name:** Identificador del sensor (usado en logs, futuro multi-capacitive)
 
 ### Troubleshooting
 
