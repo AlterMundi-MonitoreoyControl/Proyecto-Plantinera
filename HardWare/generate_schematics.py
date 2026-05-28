@@ -255,8 +255,8 @@ def draw_rs485():
         rx_pos = esp.RX16
         de_pos = esp.DERE
 
-        # === MAX485 — misma pinspacing → conexiones horizontales ===
-        gap = 5
+        # === MAX485 (módulo C25B, alimentado a 5V) ===
+        gap = 7
         max485 = d.add(elm.Ic(
             pins=[
                 elm.IcPin(name='DI',   side='left',  slot='1/3'),
@@ -272,16 +272,41 @@ def draw_rs485():
         ).at((tx_pos[0] + gap, tx_pos[1])).anchor('DI')
          .label('MAX485', loc='center', fontsize=11))
 
-        d.add(elm.Vdd().at(max485.MVCC).label('3.3V'))
+        d.add(elm.Vdd().at(max485.MVCC).label('5V'))
         d.add(elm.Ground().at(max485.MGND))
 
-        # === Conexiones ESP32 → MAX485 (horizontales) ===
+        # === Conexiones ESP32 ↔ MAX485 ===
+        # TX (3.3V → MAX485 DI): MAX485 VIH≈2V, 3.3V lógico HIGH es válido
         d.add(elm.Line().at(tx_pos).to(max485.DI)
               .color('orange').label('TX GPIO17', loc='top', fontsize=7))
-        d.add(elm.Line().at(rx_pos).to(max485.RO)
-              .color('cyan').label('RX GPIO16', loc='top', fontsize=7))
+        # DE/RE (3.3V → MAX485 DE): mismo análisis, OK
         d.add(elm.Line().at(de_pos).to(max485.DE)
               .color('purple').label('DE/RE GPIO18', loc='bottom', fontsize=7))
+
+        # RX (MAX485 RO 5V → ESP32 RX, 3.3V máx): DIVISOR 1k/2k
+        # Junction más cerca del ESP32 para dar espacio al 1kΩ
+        ro_pos = max485.RO
+        jn_x = rx_pos[0] + 2.5                 # junction 2.5 a la derecha de RX16
+        jn = (jn_x, rx_pos[1])
+
+        # Tramo cyan ESP32 RX16 → junction (label 'RX GPIO16' va en este tramo)
+        d.add(elm.Line().at(rx_pos).to(jn)
+              .color('cyan').label('RX GPIO16', loc='top', fontsize=7))
+        d.add(elm.Dot().at(jn))
+
+        # Resistencia serie 1kΩ desde junction hasta RO
+        d.add(elm.Resistor().at(jn).to(ro_pos).color('cyan')
+              .label('1kΩ\nserie', loc='top', fontsize=7))
+
+        # Pulldown 2kΩ desde junction hacia abajo a GND
+        # (cruza la línea TX17 sin dot — convención estándar, no hay conexión)
+        d.add(elm.Resistor().at(jn).down(2.0)
+              .label('2kΩ', loc='left', fontsize=7))
+        d.add(elm.Ground())
+
+        # Etiqueta del divisor (debajo del GND del pulldown, fuera de las señales)
+        d.add(elm.Label().at((jn_x, jn[1] - 3.6))
+              .label('Divisor 5V->3.3V\n(protege GPIO16)', fontsize=7, color='red'))
 
         # === Bus A (verde) y B (azul) ===
         bus_len = 13
@@ -374,8 +399,9 @@ def draw_rs485():
         note_x = bus_x0 + bus_len / 2
         d.add(elm.Label().at((note_x, note_y))
               .label('RS485 Modbus RTU — Half-duplex (DE/RE=GPIO18)\n'
-                     'Terminacion 120Ω en extremos del bus  •  Masa comun OBLIGATORIA\n'
-                     '9600 baud 8N1  •  Bias 560Ω en A/B  •  Cable max 1200m',
+                     'Modulo C25B alimentado a 5V • Divisor 1k/2k en RO (protege GPIO16)\n'
+                     'Terminacion 120Ω en extremos del bus • Bias 560Ω en A/B\n'
+                     'Masa comun OBLIGATORIA • 9600 baud 8N1 • Cable max 1200m',
                      fontsize=9, color='gray'))
 
     print('  ✓ sch_rs485_modbus.svg')
