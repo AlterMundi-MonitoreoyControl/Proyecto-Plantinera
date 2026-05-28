@@ -22,6 +22,9 @@
  *   Sensor GND  -> GND
  */
 class HD38Sensor : public SensorBase, public IMoistureSensor {
+public:
+    enum CalibMode { LINEAR, QUADRATIC };
+
 private:
     int analogPin;
     int digitalPin;
@@ -34,6 +37,10 @@ private:
     int dryValue;
     int wetValue;
     String sensorName;
+    CalibMode calibMode;
+    float calibA;
+    float calibB;
+    float calibC;
 
 public:
     HD38Sensor(int aPin = 35,
@@ -52,7 +59,9 @@ public:
           active(false),
           dryValue(4095),
           wetValue(0),
-          sensorName(name) {}
+          sensorName(name),
+          calibMode(LINEAR),
+          calibA(0), calibB(0), calibC(0) {}
 
     bool init() override {
         DBG_VERBOSE("[HD38] '%s': a=%d d=%d div=%s\n",
@@ -94,11 +103,19 @@ public:
                 rawValue = constrain(rawValue, 0, 3100);
             }
 
-            moisture = map(rawValue, dryValue, wetValue, 0, 100);
-            moisture = constrain(moisture, 0, 100);
-
-            DBG_INFO("[HD38] '%s' pin=%d Raw=%d M=%.1f%% (dry=%d wet=%d)\n",
-                     sensorName.c_str(), analogPin, rawValue, moisture, dryValue, wetValue);
+            if (calibMode == QUADRATIC) {
+                // y = a*x^2 + b*x + c — sin clamp
+                moisture = calibA * (float)rawValue * (float)rawValue
+                         + calibB * (float)rawValue
+                         + calibC;
+                DBG_INFO("[HD38] '%s' pin=%d Raw=%d M=%.3f (a=%.6f b=%.6f c=%.3f)\n",
+                         sensorName.c_str(), analogPin, rawValue, moisture, calibA, calibB, calibC);
+            } else {
+                moisture = map(rawValue, dryValue, wetValue, 0, 100);
+                moisture = constrain(moisture, 0, 100);
+                DBG_INFO("[HD38] '%s' pin=%d Raw=%d M=%.1f%% (dry=%d wet=%d)\n",
+                         sensorName.c_str(), analogPin, rawValue, moisture, dryValue, wetValue);
+            }
         }
 
         if (digitalPin >= 0) {
@@ -146,8 +163,22 @@ public:
     void setCalibration(int dry, int wet) {
         dryValue = dry;
         wetValue = wet;
-        DBG_INFO("[HD38] Cal: dry=%d wet=%d\n", dry, wet);
+        calibMode = LINEAR;
+        DBG_INFO("[HD38] Cal LINEAR: dry=%d wet=%d\n", dry, wet);
     }
+
+    void setQuadraticCalibration(float a, float b, float c) {
+        calibA = a;
+        calibB = b;
+        calibC = c;
+        calibMode = QUADRATIC;
+        DBG_INFO("[HD38] Cal QUADRATIC: a=%.6f b=%.6f c=%.3f\n", a, b, c);
+    }
+
+    CalibMode getCalibMode() const { return calibMode; }
+    float getCalibA()       const { return calibA; }
+    float getCalibB()       const { return calibB; }
+    float getCalibC()       const { return calibC; }
 
     // ── Mediator interface ────────────────────────────────────────────────
     SensorKey getKey() const override { return SensorBase::getKey(); }

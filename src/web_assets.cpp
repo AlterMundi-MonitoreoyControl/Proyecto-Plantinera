@@ -1406,6 +1406,12 @@ function renderMoistureSensorConfig(sensor, index) {
     const defaultDry = cfg.dry !== undefined ? cfg.dry : (isHD38 ? 4095 : 3500);
     const defaultWet = cfg.wet !== undefined ? cfg.wet : (isHD38 ? 0    : 1500);
     const label = isHD38 ? 'HD38 / Resistivo' : 'Capacitivo';
+    // Calibración cuadrática (issue #19)
+    const calibMode = cfg.calib_mode || 'linear';
+    const calibA = cfg.a !== undefined ? cfg.a : 0;
+    const calibB = cfg.b !== undefined ? cfg.b : 0;
+    const calibC = cfg.c !== undefined ? cfg.c : 0;
+    const isQuad = calibMode === 'quadratic';
 
     return `
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
@@ -1444,6 +1450,33 @@ function renderMoistureSensorConfig(sensor, index) {
                 <div class="info-text">Lectura en agua / suelo saturado</div>
             </div>
         </div>
+        <div class="form-group" style="margin-top:6px">
+            <label for="sensor_${index}_calib_mode">Modo de calibración</label>
+            <select id="sensor_${index}_calib_mode" style="width:100%"
+                onchange="document.getElementById('sensor_${index}_quad_block').style.display = this.value === 'quadratic' ? 'block' : 'none'">
+                <option value="linear" ${!isQuad ? 'selected' : ''}>Lineal (usa Seco / Húmedo de arriba)</option>
+                <option value="quadratic" ${isQuad ? 'selected' : ''}>Cuadrática (y = a·x² + b·x + c)</option>
+            </select>
+            <div class="info-text">El modo lineal usa los valores Seco/Húmedo; el cuadrático ignora esos y aplica la curva.</div>
+        </div>
+        <div id="sensor_${index}_quad_block" style="display:${isQuad ? 'block' : 'none'};background:#fff8e6;border-left:3px solid #f0ad4e;padding:8px 12px;border-radius:4px;margin-bottom:8px">
+            <small style="color:var(--gray-medium)">Calibración cuadrática: y = a·x² + b·x + c &nbsp;·&nbsp; <em>x = raw ADC (0-4095)</em></small>
+            <div class="inline-group" style="margin-top:6px">
+                <div class="form-group">
+                    <label for="sensor_${index}_a">a</label>
+                    <input type="number" step="any" id="sensor_${index}_a" value="${calibA}" style="width:100%">
+                </div>
+                <div class="form-group">
+                    <label for="sensor_${index}_b">b</label>
+                    <input type="number" step="any" id="sensor_${index}_b" value="${calibB}" style="width:100%">
+                </div>
+                <div class="form-group">
+                    <label for="sensor_${index}_c">c</label>
+                    <input type="number" step="any" id="sensor_${index}_c" value="${calibC}" style="width:100%">
+                </div>
+            </div>
+            <div class="info-text">⚠ Sin clamp: el sensor reporta el valor exacto de la curva (puede ser negativo o &gt;100).</div>
+        </div>
         ${isHD38 ? `
         <div class="inline-group" style="margin-top:4px">
             <div class="form-group">
@@ -1472,6 +1505,8 @@ function addMoistureSensor() {
             dry: isHD38 ? 4095 : 3500,
             wet: isHD38 ? 0    : 1500,
             name: '',
+            calib_mode: 'linear',
+            a: 0, b: 0, c: 0,
             ...(isHD38 ? { voltage_divider: false, invert_logic: false } : {})
         }
     });
@@ -1765,6 +1800,17 @@ function buildConfigFromForm() {
                 if (pinInput)  sensor.config.pin  = parseInt(pinInput.value);
                 if (dryInput)  sensor.config.dry  = parseInt(dryInput.value);
                 if (wetInput)  sensor.config.wet  = parseInt(wetInput.value);
+
+                // Calibración cuadrática (issue #19)
+                const modeSel = document.getElementById(`sensor_${index}_calib_mode`);
+                const aInput  = document.getElementById(`sensor_${index}_a`);
+                const bInput  = document.getElementById(`sensor_${index}_b`);
+                const cInput  = document.getElementById(`sensor_${index}_c`);
+                if (modeSel) sensor.config.calib_mode = modeSel.value;
+                if (aInput)  sensor.config.a = parseFloat(aInput.value) || 0;
+                if (bInput)  sensor.config.b = parseFloat(bInput.value) || 0;
+                if (cInput)  sensor.config.c = parseFloat(cInput.value) || 0;
+
                 if (sensor.type === 'hd38') {
                     const vdiv = document.getElementById(`sensor_${index}_voltage_divider`);
                     const inv  = document.getElementById(`sensor_${index}_invert_logic`);

@@ -19,6 +19,7 @@ extern void runSensorIdentityTests();
 extern void runAutomationFlowTests();
 extern void runRuleLoaderTests();
 extern void runActuatorTimingTests();
+extern void runQuadraticCalibrationTests();
 extern void testWifiPasswordLength_EmptyIsValid();
 extern void testWifiPasswordLength_AcceptsWPA2Range();
 extern void testWifiPasswordLength_RejectsTooShort();
@@ -52,6 +53,7 @@ int main() {
     runAutomationFlowTests();
     runRuleLoaderTests();
     runActuatorTimingTests();
+    runQuadraticCalibrationTests();
 
     RUN_TEST(testWifiPasswordLength_EmptyIsValid);
     RUN_TEST(testWifiPasswordLength_AcceptsWPA2Range);
@@ -82,6 +84,7 @@ void setup() {
     runAutomationFlowTests();
     runRuleLoaderTests();
     runActuatorTimingTests();
+    runQuadraticCalibrationTests();
     UNITY_END();
 }
 void loop() {}
