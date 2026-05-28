@@ -53,20 +53,9 @@ def draw_i2c_sensors():
         d.add(elm.Line().at(esp.SCL22).to(scd.SSCL).color('green')
               .label('SCL (GPIO22)', loc='bottom', fontsize=8))
 
-        # Pull-ups en zona libre ENCIMA del bus, a la derecha del bus
-        # — separadas horizontalmente para no cruzar entre sí
-        pu_sda_x = esp.SDA21[0] + 3.5   # alineado con SDA (línea baja)
-        pu_scl_x = esp.SDA21[0] + 6.0   # separado 2.5 unidades a la derecha
-
-        d.add(elm.Dot().at((pu_sda_x, esp.SDA21[1])))
-        d.add(elm.Resistor().at((pu_sda_x, esp.SDA21[1])).up(2.5)
-              .label('4.7kΩ', loc='right', fontsize=8))
-        d.add(elm.Vdd().label('3.3V'))
-
-        d.add(elm.Dot().at((pu_scl_x, esp.SCL22[1])))
-        d.add(elm.Resistor().at((pu_scl_x, esp.SCL22[1])).up(2.5)
-              .label('4.7kΩ', loc='right', fontsize=8))
-        d.add(elm.Vdd().label('3.3V'))
+        # Coordenadas de derivación al BME280 (junctions sobre los buses)
+        pu_sda_x = esp.SDA21[0] + 3.5   # punto de derivación en línea SDA
+        pu_scl_x = esp.SDA21[0] + 6.0   # punto de derivación en línea SCL
 
         # BME280 — debajo y alineada con SCD30
         bme_x = scd.SSDA[0]
@@ -98,7 +87,7 @@ def draw_i2c_sensors():
         d.add(elm.Line().right().tox(bme.BSCL[0]).color('green'))
 
         d.add(elm.Label().at(((esp.SDA21[0] + bme_x) / 2, bme_y - 3.5))
-              .label('Bus I2C compartido — Pull-ups 4.7kΩ externos\n'
+              .label('Bus I2C compartido (GPIO21/22)\n'
                      'SCD30: pico 75mA — verificar regulador 3V3',
                      fontsize=9, color='gray'))
 
@@ -129,34 +118,62 @@ def draw_onewire():
         d.add(elm.Resistor().at((pu_x, 0)).up().label('4.7kΩ', loc='right', fontsize=10))
         d.add(elm.Vdd().label('3.3V'))
 
-        # DS18B20 sensores — colgando debajo. DQ arriba, VDD/GND abajo
+        # DS18B20 — cada sensor como caja con DQ arriba (al bus) y VDD/GND
+        # cableados manualmente a rails comunes abajo. Visualmente claro.
         drop = 2.5
         sensor_xs = [4.0, 7.5, 11.0]
+        box_w = 1.8
+        box_h = 1.8
+
+        # Coordenadas de los rails
+        rail_v_y = -drop - box_h - 1.2   # rail 3.3V
+        rail_g_y = rail_v_y - 1.5        # rail GND
 
         for i, xpos in enumerate(sensor_xs):
+            # Bajada del bus a DQ del sensor
             d.add(elm.Dot().at((xpos, 0)))
             d.add(elm.Line().at((xpos, 0)).down(drop))
 
-            ds = d.add(elm.Ic(
-                pins=[
-                    elm.IcPin(name=f'DQ{i}',  side='top',    slot='1/1'),
-                    elm.IcPin(name=f'VDD{i}', side='bottom', slot='1/2'),
-                    elm.IcPin(name=f'GND{i}', side='bottom', slot='2/2'),
-                ],
-                edgepadW=0.5, edgepadH=0.6,
-                pinspacing=1.0, lsize=9,
-            ).anchor(f'DQ{i}')
-             .label(f'DS18B20\n#{i + 1}', loc='center', fontsize=8))
+            # Caja del DS18B20 con DQ en el medio del borde superior
+            box_top_y = -drop
+            box_left  = xpos - box_w / 2
+            box_right = xpos + box_w / 2
+            box_bot   = box_top_y - box_h
 
-            # VDD: línea corta hacia abajo + etiqueta 3.3V (Vdd apuntaría hacia el IC)
-            vdd_pin = getattr(ds, f'VDD{i}')
-            d.add(elm.Line().at(vdd_pin).down(0.7))
-            d.add(elm.Label().label('3.3V', loc='bottom', fontsize=7))
-            d.add(elm.Ground().at(getattr(ds, f'GND{i}')))
+            d.add(elm.Line().at((box_left, box_top_y)).to((box_right, box_top_y)))
+            d.add(elm.Line().at((box_right, box_top_y)).to((box_right, box_bot)))
+            d.add(elm.Line().at((box_right, box_bot)).to((box_left, box_bot)))
+            d.add(elm.Line().at((box_left, box_bot)).to((box_left, box_top_y)))
+            d.add(elm.Label().at((xpos, box_top_y - box_h / 2))
+                  .label(f'DS18B20\n#{i + 1}', fontsize=8))
 
-        d.add(elm.Label().at((7, -drop - 4.2))
-              .label('Pull-up 4.7kΩ OBLIGATORIO  •  Resolución 12-bit (750ms)\n'
-                     'Máx ~10 sensores  •  Cable máx 3m  •  Cap 0.1µF VDD↔GND c/sensor',
+            # VDD: línea desde la esquina inferior-izquierda al rail 3.3V
+            vdd_x = box_left + 0.4
+            d.add(elm.Line().at((vdd_x, box_bot)).down().toy(rail_v_y))
+            d.add(elm.Dot().at((vdd_x, rail_v_y)))
+            d.add(elm.Label().at((vdd_x - 0.4, box_bot + 0.25))
+                  .label('VDD', fontsize=6, color='gray'))
+
+            # GND: línea desde la esquina inferior-derecha al rail GND
+            gnd_x = box_right - 0.4
+            d.add(elm.Line().at((gnd_x, box_bot)).down().toy(rail_g_y))
+            d.add(elm.Dot().at((gnd_x, rail_g_y)))
+            d.add(elm.Label().at((gnd_x + 0.4, box_bot + 0.25))
+                  .label('GND', fontsize=6, color='gray'))
+
+        # Rails horizontales
+        rail_left  = sensor_xs[0] - 1.2
+        rail_right = sensor_xs[-1] + 1.5
+        d.add(elm.Line().at((rail_left, rail_v_y)).to((rail_right, rail_v_y)))
+        d.add(elm.Line().at((rail_left, rail_g_y)).to((rail_right, rail_g_y)))
+
+        # Símbolos de power al extremo derecho del rail
+        d.add(elm.Vdd().at((rail_right, rail_v_y)).label('3.3V', fontsize=8))
+        d.add(elm.Ground().at((rail_right, rail_g_y)))
+
+        d.add(elm.Label().at((6, rail_g_y - 2.5))
+              .label('Pull-up 4.7kΩ OBLIGATORIO (sin él OneWire no funciona)\n'
+                     'Resolución 12-bit (750ms) • Máx ~10 sensores • Cable máx 3m',
                      fontsize=9, color='gray'))
 
     print('  ✓ sch_onewire.svg')
@@ -169,62 +186,66 @@ def draw_adc_soil():
     with schemdraw.Drawing(file=os.path.join(OUT, 'sch_adc_soil.svg'), show=False) as d:
         d.config(fontsize=11, unit=3)
 
-        # --- HD38 con protección ---
-        y0 = 0
-        d.add(elm.Label().at((4.5, y0 + 3.5))
-              .label('HD38 — CONEXION RECOMENDADA (con proteccion ADC)',
-                     fontsize=11, color='green'))
+        # === ESP32 (solo pines ADC relevantes) ===
+        # pinspacing alto (6.5) para que los 2 sensores quepan sin pisar power rails
+        esp = d.add(elm.Ic(
+            pins=[
+                elm.IcPin(name='GPIO35', side='right', slot='2/2'),  # arriba
+                elm.IcPin(name='GPIO34', side='right', slot='1/2'),  # abajo
+            ],
+            edgepadW=1.2, edgepadH=1.0,
+            pinspacing=6.5, lsize=11,
+        ).label('ESP32', loc='center', fontsize=12))
 
-        d.add(elm.Dot(open=True).at((0, y0)))
-        d.add(elm.Label().at((0, y0)).label('HD38\nAOUT (0-5V)', loc='left', fontsize=9))
+        # === HD38 (sensor 5V) — alineado con GPIO35 (línea arriba) ===
+        hd_gap = 6.5
+        hd = d.add(elm.Ic(
+            pins=[
+                elm.IcPin(name='HVCC',  side='top',    slot='1/1'),
+                elm.IcPin(name='HAOUT', side='left',   slot='1/1'),
+                elm.IcPin(name='HGND',  side='bottom', slot='1/1'),
+            ],
+            edgepadW=0.6, edgepadH=0.8,
+            pinspacing=1.5, lsize=10,
+        ).at((esp.GPIO35[0] + hd_gap, esp.GPIO35[1])).anchor('HAOUT')
+         .label('HD38\n(suelo)', loc='center', fontsize=9))
 
-        r1 = d.add(elm.Resistor().right().at((0, y0)).label('10kΩ', loc='top', fontsize=9))
-        jct = r1.end
-        d.add(elm.Dot().at(jct))
+        # === Capacitivo (sensor 3.3V) — alineado con GPIO34 (línea abajo) ===
+        cap = d.add(elm.Ic(
+            pins=[
+                elm.IcPin(name='CVCC',  side='top',    slot='1/1'),
+                elm.IcPin(name='CAOUT', side='left',   slot='1/1'),
+                elm.IcPin(name='CGND',  side='bottom', slot='1/1'),
+            ],
+            edgepadW=0.6, edgepadH=0.8,
+            pinspacing=1.5, lsize=10,
+        ).at((esp.GPIO34[0] + hd_gap, esp.GPIO34[1])).anchor('CAOUT')
+         .label('Capacitivo\n(suelo)', loc='center', fontsize=9))
 
-        # Schottky a 3.3V
-        d.add(elm.Diode().at(jct).up(2.2).label('BAT43', loc='right', fontsize=8))
-        d.add(elm.Vdd().label('3.3V'))
+        # === Conexiones AOUT (horizontales, color por voltaje) ===
+        d.add(elm.Line().at(esp.GPIO35).to(hd.HAOUT).color('darkorange')
+              .label('AOUT (0-5V)', loc='top', fontsize=7))
+        d.add(elm.Line().at(esp.GPIO34).to(cap.CAOUT).color('darkgreen')
+              .label('AOUT (0-3.3V)', loc='top', fontsize=7))
 
-        # Schottky a GND
-        d.add(elm.Diode().at(jct).down(2.2).reverse().label('BAT43', loc='right', fontsize=8))
-        d.add(elm.Ground())
+        # === Power rails de cada sensor ===
+        d.add(elm.Vdd().at(hd.HVCC).label('5V', fontsize=8, color='red'))
+        d.add(elm.Ground().at(hd.HGND))
+        d.add(elm.Vdd().at(cap.CVCC).label('3.3V', fontsize=8, color='red'))
+        d.add(elm.Ground().at(cap.CGND))
 
-        d.add(elm.Line().at(jct).right(3.5))
-        d.add(elm.Dot(open=True))
-        d.add(elm.Label().label('ESP32\nGPIO35', loc='right', fontsize=9))
+        # === Warning sobre el HD38 a 5V → GPIO35 (debajo de la línea AOUT) ===
+        warn_x = (esp.GPIO35[0] + hd.HAOUT[0]) / 2
+        d.add(elm.Label().at((warn_x, esp.GPIO35[1] - 0.7))
+              .label('⚠ puede superar 3.3V', fontsize=7, color='red'))
 
-        # --- Conexión directa (no recomendada) ---
-        y1 = y0 - 7.5
-        d.add(elm.Label().at((4.5, y1 + 1.2))
-              .label('HD38 — CONEXION DIRECTA (no recomendada)',
-                     fontsize=10, color='red'))
-
-        d.add(elm.Dot(open=True).at((0, y1)))
-        d.add(elm.Label().at((0, y1)).label('HD38\nAOUT (0-5V)', loc='left', fontsize=9))
-        d.add(elm.Line().right(6).at((0, y1)).color('red').linestyle('--'))
-        d.add(elm.Dot(open=True))
-        d.add(elm.Label().label('ESP32\nGPIO35', loc='right', fontsize=9))
-
-        # --- Capacitivo ---
-        y2 = y1 - 5
-        d.add(elm.Label().at((4.5, y2 + 1.2))
-              .label('Sensor Capacitivo — conexion directa OK si VCC=3.3V',
-                     fontsize=10, color='green'))
-
-        d.add(elm.Dot(open=True).at((0, y2)))
-        d.add(elm.Label().at((0, y2)).label('Capacitivo\nAOUT', loc='left', fontsize=9))
-        d.add(elm.Line().right(6).at((0, y2)).color('green'))
-        d.add(elm.Dot(open=True))
-        d.add(elm.Label().label('ESP32\nGPIO34', loc='right', fontsize=9))
-
-        # --- Notas ---
-        y3 = y2 - 3.8
-        d.add(elm.Label().at((4.5, y3))
-              .label('ESP32 ADC max absoluto: 3.6V — HD38 a 5V puede enviar hasta 5V\n'
-                     'GPIO34/35 son ADC1 (correcto con WiFi). NO usar ADC2 con WiFi\n'
-                     'Atenuacion ADC 11dB -> rango lineal util: ~0.15-2.5V',
-                     fontsize=9, color='darkred'))
+        # === Nota factual al pie ===
+        note_y = esp.GPIO34[1] - 3.5
+        d.add(elm.Label().at(((esp.GPIO34[0] + cap.CAOUT[0]) / 2, note_y))
+              .label('HD38 a 5V: AO puede entregar hasta 5V — sin proteccion en este HW (medir antes).\n'
+                     'GPIO34 y GPIO35 son ADC1 (OK con WiFi). NO usar ADC2 con WiFi activo.\n'
+                     'Atenuacion ADC 11dB -> rango lineal util ~0.15-2.5V.',
+                     fontsize=9, color='gray'))
 
     print('  ✓ sch_adc_soil.svg')
 
@@ -256,7 +277,7 @@ def draw_rs485():
         de_pos = esp.DERE
 
         # === MAX485 (módulo C25B, alimentado a 5V) ===
-        gap = 7
+        gap = 5
         max485 = d.add(elm.Ic(
             pins=[
                 elm.IcPin(name='DI',   side='left',  slot='1/3'),
@@ -283,125 +304,104 @@ def draw_rs485():
         d.add(elm.Line().at(de_pos).to(max485.DE)
               .color('purple').label('DE/RE GPIO18', loc='bottom', fontsize=7))
 
-        # RX (MAX485 RO 5V → ESP32 RX, 3.3V máx): DIVISOR 1k/2k
-        # Junction más cerca del ESP32 para dar espacio al 1kΩ
-        ro_pos = max485.RO
-        jn_x = rx_pos[0] + 2.5                 # junction 2.5 a la derecha de RX16
-        jn = (jn_x, rx_pos[1])
-
-        # Tramo cyan ESP32 RX16 → junction (label 'RX GPIO16' va en este tramo)
-        d.add(elm.Line().at(rx_pos).to(jn)
+        # RX (MAX485 RO -> ESP32 RX): conexión directa, tal como está en el HW
+        d.add(elm.Line().at(rx_pos).to(max485.RO)
               .color('cyan').label('RX GPIO16', loc='top', fontsize=7))
-        d.add(elm.Dot().at(jn))
 
-        # Resistencia serie 1kΩ desde junction hasta RO
-        d.add(elm.Resistor().at(jn).to(ro_pos).color('cyan')
-              .label('1kΩ\nserie', loc='top', fontsize=7))
+        # === BUS UTP 4 conductores: VCC, B-, A+, GND ===
+        # Las 4 líneas viajan paralelas. A+ y B- alineadas con DA/DB del MAX485.
+        # MAX485 right-side slots: DA=1/2 (bottom), DB=2/2 (top) → y_b > y_a.
+        y_a   = max485.DA[1]            # A+ (verde)
+        y_b   = max485.DB[1]            # B- (azul)
+        y_vcc = y_b + 1.5               # VCC (rojo, arriba de B-)
+        y_gnd = y_a - 1.5               # GND (negro, debajo de A+)
 
-        # Pulldown 2kΩ desde junction hacia abajo a GND
-        # (cruza la línea TX17 sin dot — convención estándar, no hay conexión)
-        d.add(elm.Resistor().at(jn).down(2.0)
-              .label('2kΩ', loc='left', fontsize=7))
-        d.add(elm.Ground())
+        bus_x0 = max485.DA[0] + 2.0     # inicio del bus
+        bus_x1 = bus_x0 + 12            # fin del bus (terminación 120Ω)
 
-        # Etiqueta del divisor (debajo del GND del pulldown, fuera de las señales)
-        d.add(elm.Label().at((jn_x, jn[1] - 3.6))
-              .label('Divisor 5V->3.3V\n(protege GPIO16)', fontsize=7, color='red'))
+        # Conexión A+ y B- desde MAX485 al inicio del bus
+        d.add(elm.Line().at(max485.DA).to((bus_x0, y_a)).color('darkgreen'))
+        d.add(elm.Line().at(max485.DB).to((bus_x0, y_b)).color('navy'))
 
-        # === Bus A (verde) y B (azul) ===
-        bus_len = 13
-        bus_x0  = max485.DA[0]
-        bus_a_y = max485.DA[1]
-        bus_b_y = max485.DB[1]
+        # Fuente de alimentación del bus (VCC y GND, externa, a la izquierda)
+        ps_x = bus_x0 - 1.2
+        d.add(elm.Vdd().at((ps_x, y_vcc + 0.8)).label('5-30V', fontsize=7, color='red'))
+        d.add(elm.Line().at((ps_x, y_vcc + 0.8)).to((ps_x, y_vcc)).color('red'))
+        d.add(elm.Line().at((ps_x, y_vcc)).to((bus_x0, y_vcc)).color('red'))
+        d.add(elm.Line().at((ps_x, y_gnd)).to((bus_x0, y_gnd)).color('black'))
+        d.add(elm.Line().at((ps_x, y_gnd)).to((ps_x, y_gnd - 0.8)).color('black'))
+        d.add(elm.Ground().at((ps_x, y_gnd - 0.8)))
 
-        d.add(elm.Line().at(max485.DA).right(bus_len).color('green'))
-        d.add(elm.Line().at(max485.DB).right(bus_len).color('blue'))
+        # Las 4 líneas horizontales del bus
+        d.add(elm.Line().at((bus_x0, y_vcc)).to((bus_x1, y_vcc)).color('red'))
+        d.add(elm.Line().at((bus_x0, y_b)).to((bus_x1, y_b)).color('navy'))
+        d.add(elm.Line().at((bus_x0, y_a)).to((bus_x1, y_a)).color('darkgreen'))
+        d.add(elm.Line().at((bus_x0, y_gnd)).to((bus_x1, y_gnd)).color('black'))
 
-        # Labels A/B — a la izquierda del primer nodo, sin superposición
-        d.add(elm.Label().at((bus_x0 + 0.5, bus_a_y + 0.6))
-              .label('A (D+)', fontsize=8, color='darkgreen'))
-        d.add(elm.Label().at((bus_x0 + 0.5, bus_b_y - 0.6))
-              .label('B (D−)', fontsize=8, color='navy'))
+        # Labels de las 4 líneas
+        d.add(elm.Label().at((bus_x0 + 0.3, y_vcc + 0.5)).label('VCC', fontsize=7, color='red'))
+        d.add(elm.Label().at((bus_x0 + 0.3, y_b   + 0.5)).label('B-',  fontsize=7, color='navy'))
+        d.add(elm.Label().at((bus_x0 + 0.3, y_a   - 0.8)).label('A+',  fontsize=7, color='darkgreen'))
+        d.add(elm.Label().at((bus_x0 + 0.3, y_gnd - 0.8)).label('GND', fontsize=7, color='black'))
 
-        # === Bias resistors — A pull-up a 3.3V, B pull-down a GND ===
-        # Separadas en x para que cada una cruce una sola línea (sin dot = sin conexión)
-        bias_a_x = bus_x0 + 2.2
-        bias_b_x = bus_x0 + 3.6
+        # Label "Cable UTP" arriba del bus
+        d.add(elm.Label().at((bus_x0 + 6, y_vcc + 1.5))
+              .label('Cable UTP 4 pares (4 conductores usados)', fontsize=8, color='gray'))
 
-        # Bias A: pull-up desde la línea A (verde) hacia 3.3V
-        d.add(elm.Dot().at((bias_a_x, bus_a_y)))
-        d.add(elm.Resistor().at((bias_a_x, bus_a_y)).up(2.8)
-              .label('560Ω\nbias A', loc='left', fontsize=7))
-        d.add(elm.Vdd().label('3.3V', fontsize=7))
+        # === Helper: bornera x4 + dispositivo debajo ===
+        def draw_node(x, dev_label):
+            # Bornera: rectángulo vertical sobre las 4 líneas + dots
+            bx = 0.45
+            top = y_vcc + 0.6
+            bot = y_gnd - 0.6
+            d.add(elm.Line().at((x - bx, top)).to((x + bx, top)))
+            d.add(elm.Line().at((x + bx, top)).to((x + bx, bot)))
+            d.add(elm.Line().at((x + bx, bot)).to((x - bx, bot)))
+            d.add(elm.Line().at((x - bx, bot)).to((x - bx, top)))
+            for y in [y_vcc, y_b, y_a, y_gnd]:
+                d.add(elm.Dot().at((x, y)))
+            d.add(elm.Label().at((x + bx + 0.3, (top + bot) / 2))
+                  .label('bornera\nx4', fontsize=6, color='gray'))
 
-        # Bias B: pull-down desde la línea B (azul) hacia GND
-        d.add(elm.Dot().at((bias_b_x, bus_b_y)))
-        d.add(elm.Resistor().at((bias_b_x, bus_b_y)).down(2.8)
-              .label('560Ω\nbias B', loc='right', fontsize=7))
-        d.add(elm.Ground())
+            # Caja del dispositivo, debajo de la bornera
+            dev_w = 3.0
+            dev_h = 1.6
+            dev_top = y_gnd - 2.8
+            dev_bot = dev_top - dev_h
+            dev_l = x - dev_w / 2
+            dev_r = x + dev_w / 2
+            d.add(elm.Line().at((dev_l, dev_top)).to((dev_r, dev_top)))
+            d.add(elm.Line().at((dev_r, dev_top)).to((dev_r, dev_bot)))
+            d.add(elm.Line().at((dev_r, dev_bot)).to((dev_l, dev_bot)))
+            d.add(elm.Line().at((dev_l, dev_bot)).to((dev_l, dev_top)))
+            d.add(elm.Label().at((x, (dev_top + dev_bot) / 2))
+                  .label(dev_label, fontsize=8))
 
-        # === TH-MB-04S — pines arriba, IC cuelga hacia abajo ===
-        th_x  = bus_x0 + 6.0
-        drop  = 2.8
+            # 4 cables color-codificados de la bornera al dispositivo
+            colors = ['red', 'navy', 'darkgreen', 'black']
+            for i, color in enumerate(colors):
+                cable_x = x + (i - 1.5) * 0.3
+                d.add(elm.Line().at((cable_x, bot)).to((cable_x, dev_top)).color(color))
 
-        d.add(elm.Dot().at((th_x, bus_a_y)))
-        d.add(elm.Dot().at((th_x, bus_b_y)))
+        # Nodo 1: TH-MB-04S
+        draw_node(bus_x0 + 4.0, 'TH-MB-04S\nAddr:1 (T/H)')
 
-        th = d.add(elm.Ic(
-            pins=[
-                elm.IcPin(name='TA',   side='top',    slot='1/2'),
-                elm.IcPin(name='TB',   side='top',    slot='2/2'),
-                elm.IcPin(name='TPWR', side='bottom', slot='1/2'),
-                elm.IcPin(name='TGND', side='bottom', slot='2/2'),
-            ],
-            edgepadW=0.6, edgepadH=0.5,
-            pinspacing=1.2, lsize=8,
-        ).at((th_x, bus_b_y - drop)).anchor('TA')
-         .label('TH-MB-04S\nAddr:1 (T/H)', loc='center', fontsize=7))
+        # Nodo 2: Relay 2CH
+        draw_node(bus_x0 + 8.5, 'Relay 2CH\nAddr:2')
 
-        d.add(elm.Line().at((th_x, bus_a_y)).down().toy(th.TA[1]).color('green'))
-        d.add(elm.Line().at((th_x, bus_b_y)).down().toy(th.TB[1]).color('blue'))
-        d.add(elm.Line().at(th.TPWR).down(0.7))
-        d.add(elm.Label().label('5-30V', loc='bottom', fontsize=6))
-        d.add(elm.Ground().at(th.TGND))
-
-        # === Relay 2CH ===
-        rl_x  = bus_x0 + 10.0
-
-        d.add(elm.Dot().at((rl_x, bus_a_y)))
-        d.add(elm.Dot().at((rl_x, bus_b_y)))
-
-        rl = d.add(elm.Ic(
-            pins=[
-                elm.IcPin(name='RA',   side='top',    slot='1/2'),
-                elm.IcPin(name='RB',   side='top',    slot='2/2'),
-                elm.IcPin(name='RPWR', side='bottom', slot='1/2'),
-                elm.IcPin(name='RGND', side='bottom', slot='2/2'),
-            ],
-            edgepadW=0.6, edgepadH=0.5,
-            pinspacing=1.2, lsize=8,
-        ).at((rl_x, bus_b_y - drop)).anchor('RA')
-         .label('Relay 2CH\nAddr:2', loc='center', fontsize=7))
-
-        d.add(elm.Line().at((rl_x, bus_a_y)).down().toy(rl.RA[1]).color('green'))
-        d.add(elm.Line().at((rl_x, bus_b_y)).down().toy(rl.RB[1]).color('blue'))
-        d.add(elm.Line().at(rl.RPWR).down(0.7))
-        d.add(elm.Label().label('5-30V', loc='bottom', fontsize=6))
-        d.add(elm.Ground().at(rl.RGND))
-
-        # === Terminación 120Ω ===
-        term_x = bus_x0 + bus_len
-        d.add(elm.Resistor().at((term_x, bus_a_y)).down().toy(bus_b_y)
+        # === Terminación 120Ω entre A+ y B- al final del bus ===
+        d.add(elm.Resistor().at((bus_x1, y_b)).down().toy(y_a)
               .label('120Ω\nterm', loc='right', fontsize=8))
+        d.add(elm.Dot().at((bus_x1, y_b)))
+        d.add(elm.Dot().at((bus_x1, y_a)))
 
-        # Nota — debajo de los grounds de TH/Relay
-        note_y = bus_b_y - drop - 5.5
-        note_x = bus_x0 + bus_len / 2
-        d.add(elm.Label().at((note_x, note_y))
-              .label('RS485 Modbus RTU — Half-duplex (DE/RE=GPIO18)\n'
-                     'Modulo C25B alimentado a 5V • Divisor 1k/2k en RO (protege GPIO16)\n'
-                     'Terminacion 120Ω en extremos del bus • Bias 560Ω en A/B\n'
-                     'Masa comun OBLIGATORIA • 9600 baud 8N1 • Cable max 1200m',
+        # Nota
+        note_y = y_gnd - 6.0
+        d.add(elm.Label().at((bus_x0 + 6, note_y))
+              .label('Modulo C25B alimentado a 5V • RS485 Modbus RTU half-duplex\n'
+                     'Bus cable UTP 4 pares: VCC + GND + A+ + B- • borneras x4 en cada nodo\n'
+                     'Terminacion 120Ω al final del bus (entre A+ y B-)\n'
+                     'DE/RE = GPIO18 • 9600 baud 8N1 • Masa comun obligatoria',
                      fontsize=9, color='gray'))
 
     print('  ✓ sch_rs485_modbus.svg')
@@ -414,64 +414,70 @@ def draw_full_system():
     with schemdraw.Drawing(file=os.path.join(OUT, 'sch_full_system.svg'), show=False) as d:
         d.config(fontsize=11, unit=3)
 
-        esp_w, esp_h = 5.5, 7.5
+        # ESP32 central, más alto para acomodar 3 buses por lado sin solapamientos
+        esp_w, esp_h = 5.5, 9
         esp_cx, esp_cy = 0, 0
 
         esp_box = d.add(flow.Box(w=esp_w, h=esp_h).at((esp_cx, esp_cy)).label(
-            'ESP32 DevKit V1\n30 pines\n\nWiFi / ESP-NOW\nWeb Server\nGrafana / InfluxDB'))
+            'ESP32 DevKit V1\n30 pines\n\nWiFi + ESP-NOW'))
 
-        # Anchors del ESP32
         esp_left_x  = esp_box.W[0]
         esp_right_x = esp_box.E[0]
         esp_top_y   = esp_box.N[1]
         esp_bot_y   = esp_box.S[1]
 
-        # --- I2C (izquierda, arriba) ---
-        i2c_box = d.add(flow.Box(w=4.5, h=2.8).at((esp_left_x - 6, esp_cy + 1.8))
+        # Y de conexión de cada bus a un lado del ESP32 (3 por lado, equiespaciados)
+        # Lado izquierdo (top→bottom): I2C, 1-Wire, ADC
+        y_i2c  = esp_cy + 3
+        y_ow   = esp_cy
+        y_adc  = esp_cy - 3
+        # Lado derecho (top→bottom): RS485, GPIO Relays
+        y_rs   = esp_cy + 2
+        y_gpio = esp_cy - 2
+
+        col_l_x = esp_left_x - 6     # centro de la columna izquierda
+        col_r_x = esp_right_x + 6    # centro de la columna derecha
+        box_w_l = 4.5
+        box_h_std = 2.2
+
+        # --- COLUMNA IZQUIERDA: I2C, 1-Wire, ADC ---
+        i2c_box = d.add(flow.Box(w=box_w_l, h=box_h_std).at((col_l_x, y_i2c))
                         .label('I2C Bus\nSCD30 (CO2)\nBME280 (T/H/P)'))
-        # Conectar borde derecho de I2C al borde izquierdo de ESP32
         d.add(elm.Line().at(i2c_box.E).right().tox(esp_left_x).color('blue'))
         d.add(elm.Label().at(((i2c_box.E[0] + esp_left_x) / 2, i2c_box.E[1] + 0.4))
               .label('SDA=21 SCL=22', fontsize=8, color='blue'))
 
-        # --- 1-Wire (izquierda, abajo) ---
-        ow_box = d.add(flow.Box(w=4.5, h=2.2).at((esp_left_x - 6, esp_cy - 1.8))
+        ow_box = d.add(flow.Box(w=box_w_l, h=box_h_std).at((col_l_x, y_ow))
                        .label('1-Wire\nDS18B20 x N'))
         d.add(elm.Line().at(ow_box.E).right().tox(esp_left_x).color('purple'))
         d.add(elm.Label().at(((ow_box.E[0] + esp_left_x) / 2, ow_box.E[1] + 0.4))
-              .label('GPIO4 + 4.7kOhm', fontsize=8, color='purple'))
+              .label('GPIO4 + 4.7kΩ', fontsize=8, color='purple'))
 
-        # --- RS485 (derecha) ---
-        rs_box = d.add(flow.Box(w=4.5, h=3.0).at((esp_right_x + 6, esp_cy))
-                       .label('RS485 Modbus\nMAX485\nSensor TH\nRelay 2CH'))
+        adc_box = d.add(flow.Box(w=box_w_l, h=box_h_std).at((col_l_x, y_adc))
+                        .label('ADC Suelo\nCapacitivo (GPIO34)\nHD38 (GPIO35)'))
+        d.add(elm.Line().at(adc_box.E).right().tox(esp_left_x).color('green'))
+        d.add(elm.Label().at(((adc_box.E[0] + esp_left_x) / 2, adc_box.E[1] + 0.4))
+              .label('GPIO34/35', fontsize=8, color='green'))
+
+        # --- COLUMNA DERECHA: RS485, GPIO Relays ---
+        rs_box = d.add(flow.Box(w=box_w_l, h=3.0).at((col_r_x, y_rs))
+                       .label('RS485 Modbus\nMAX485 (C25B)\nSensor TH\nRelay 2CH'))
         d.add(elm.Line().at(rs_box.W).left().tox(esp_right_x).color('orange'))
         d.add(elm.Label().at(((rs_box.W[0] + esp_right_x) / 2, rs_box.W[1] + 0.4))
               .label('TX=17 RX=16 DE/RE=18', fontsize=8, color='orange'))
 
-        # --- Grafana / Cloud (arriba) ---
-        cl_box = d.add(flow.Box(w=4.0, h=2.0).at((esp_cx, esp_top_y + 3.5))
-                       .label('Grafana / InfluxDB'))
-        d.add(elm.Line().at(cl_box.S).down().toy(esp_top_y).color('gray'))
-        d.add(elm.Label().at((cl_box.S[0] + 1.2, (cl_box.S[1] + esp_top_y) / 2))
-              .label('WiFi / ESP-NOW', fontsize=8, color='gray'))
+        gr_box = d.add(flow.Box(w=box_w_l, h=2.6).at((col_r_x, y_gpio))
+                       .label('GPIO Relays\n(salidas digitales)\nconfig: GPIO 0-39\nlibres: 13, 19, 23,\n25-27, 32, 33'))
+        d.add(elm.Line().at(gr_box.W).left().tox(esp_right_x).color('brown'))
+        d.add(elm.Label().at(((gr_box.W[0] + esp_right_x) / 2, gr_box.W[1] + 0.4))
+              .label('GPIO out', fontsize=8, color='brown'))
 
-        # --- ADC Suelo (abajo) ---
-        adc_box = d.add(flow.Box(w=5.0, h=2.5).at((esp_cx, esp_bot_y - 4))
-                        .label('ADC Suelo\nCapacitivo (GPIO34)\nHD38 (GPIO35)  !!'))
-        d.add(elm.Line().at(adc_box.N).up().toy(esp_bot_y).color('green'))
-        d.add(elm.Label().at((adc_box.N[0] + 1.2, (adc_box.N[1] + esp_bot_y) / 2))
-              .label('!! Prot. GPIO35', fontsize=8, color='red'))
-
-        # --- Alimentación (debajo-izquierda) ---
-        pw_box = d.add(flow.Box(w=3.5, h=1.8).at((esp_left_x - 6, esp_bot_y - 3))
+        # --- ALIMENTACIÓN: 5V USB debajo del ESP32, conexión vertical pura ---
+        pw_box = d.add(flow.Box(w=3.5, h=1.8).at((esp_cx, esp_bot_y - 2.5))
                        .label('5V USB\n-> 3.3V reg').color('red'))
-        # Línea vertical hasta el borde izquierdo del ESP32
-        d.add(elm.Line().at(pw_box.E).right().tox(esp_left_x).color('red'))
-        d.add(elm.Line().at((esp_left_x, pw_box.E[1])).up().toy(esp_bot_y).color('red'))
-
-        # --- GPIO Relays TBD ---
-        d.add(flow.Box(w=4.0, h=1.8).at((esp_right_x + 6, esp_bot_y - 2.5))
-              .label('GPIO Relays\n(proxim.)').color('lightgray'))
+        d.add(elm.Line().at(pw_box.N).up().toy(esp_bot_y).color('red'))
+        d.add(elm.Label().at((pw_box.N[0] + 1.2, (pw_box.N[1] + esp_bot_y) / 2))
+              .label('5V / GND', fontsize=8, color='red'))
 
     print('  ✓ sch_full_system.svg')
 
@@ -543,21 +549,20 @@ def draw_esp32_pinout():
 
         for anchor, _, func, color in pins_left:
             pin_pos = getattr(esp, anchor)
-            d.add(elm.Label().at((pin_pos[0] - 4.2, pin_pos[1]))
+            d.add(elm.Label().at((pin_pos[0] - 2.0, pin_pos[1]))
                   .label(func, fontsize=7, color=color))
 
         for anchor, _, func, color in pins_right:
             pin_pos = getattr(esp, anchor)
-            d.add(elm.Label().at((pin_pos[0] + 4.2, pin_pos[1]))
+            d.add(elm.Label().at((pin_pos[0] + 2.0, pin_pos[1]))
                   .label(func, fontsize=7, color=color))
 
         # Leyenda — debajo del pin más bajo (VIN / 3V3, slot inferior)
         legend_y = getattr(esp, 'VIN')[1] - 2.5
         d.add(elm.Label().at((esp.center[0], legend_y))
-              .label('Azul: I2C (GPIO21/22)  Naranja: RS485 (GPIO16/17/18)  Violeta: 1-Wire (GPIO4)\n'
-                     'Rojo: GPIO35 requiere proteccion (HD38 5V -> Schottky clamp a 3.3V y GND)\n'
+              .label('Azul: I2C (GPIO21/22)  •  Naranja: RS485 (GPIO16/17/18)  •  Violeta: 1-Wire (GPIO4)\n'
                      'ADC1 (GPIO32-39) funciona con WiFi  •  NO usar ADC2 con WiFi activo\n'
-                     'Placa: ESP32 DevKit V1 / WROOM-32 (board=esp32dev) — 30 pines, 15/lado',
+                     'ESP32 DevKit V1 / WROOM-32 (board=esp32dev) — 30 pines, 15/lado',
                      fontsize=8, color='gray'))
 
     print('  ✓ sch_esp32_pinout.svg')

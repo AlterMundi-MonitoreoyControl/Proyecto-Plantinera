@@ -12,10 +12,10 @@ Esquemáticos y guía de montaje para el sistema de monitoreo basado en **ESP32 
 | 22 | SCL | SCD30 + BME280 | I2C | Bus compartido |
 | 4 | Data | DS18B20 × N | 1-Wire | Pull-up 4.7kΩ obligatorio |
 | 34 | ADC IN | Sensor capacitivo | ADC1_CH6 | Input-only, 3.3V max |
-| 35 | ADC IN | HD38 (suelo) | ADC1_CH7 | ⚠ Requiere protección si VCC=5V |
-| 17 | TX | C25B (DI) | UART2 | RS485 transmisión, 3.3V→5V OK |
-| 16 | RX | C25B (RO) vía divisor | UART2 | ⚠ Divisor 1k/2k obligatorio (RO=5V) |
-| 18 | DE/RE | C25B | GPIO | Half-duplex control, 3.3V→5V OK |
+| 35 | ADC IN | HD38 (suelo) | ADC1_CH7 | ⚠ AO puede superar 3.3V si VCC=5V |
+| 17 | TX | C25B (DI) | UART2 | RS485 transmisión |
+| 16 | RX | C25B (RO) | UART2 | RS485 recepción (ver Known Risks) |
+| 18 | DE/RE | C25B | GPIO | Half-duplex control |
 
 > **Nota:** GPIO34/35 son ADC1 (funcionan con WiFi activo). NO usar pines ADC2 (GPIO0,2,4,12-15,25-27) para lectura analógica con WiFi habilitado.
 
@@ -41,25 +41,41 @@ Esquemáticos y guía de montaje para el sistema de monitoreo basado en **ESP32 
 | ESP32 3.3V | DS18B20 VDD (todos) | Alimentación |
 
 ### RS485 Modbus (GPIO16/17/18) — módulo **C25B alimentado a 5V**
+
+**ESP32 ↔ C25B:**
 | Origen | Destino | Señal |
 |--------|---------|-------|
 | ESP32 5V (VIN) | C25B VCC | Alimentación módulo (MAX485 requiere 5V) |
-| ESP32 GPIO17 | C25B DI | TX data (3.3V→MAX485 VIH≈2V, OK) |
-| ESP32 GPIO18 | C25B DE+RE | Direction control (3.3V, OK) |
-| C25B RO | **1kΩ serie** → GPIO16 | RX data (RO=5V, divisor obligatorio) |
-| GPIO16 | **2kΩ** → GND | Pulldown divisor (5V → ~3.3V en el tap) |
-| C25B A (D+) | Bus A | RS485 differential + |
-| C25B B (D−) | Bus B | RS485 differential − |
-| Bus A/B | TH-MB-04S | Sensor temp/hum (addr 1) |
-| Bus A/B | Relay 2CH | Módulo relay (addr 2) |
+| ESP32 GPIO17 | C25B DI | TX data |
+| ESP32 GPIO18 | C25B DE+RE | Direction control |
+| C25B RO | ESP32 GPIO16 | RX data (directo — ver Known Risks) |
+| C25B GND | ESP32 GND | Masa común |
 
-> **⚠ Crítico:** el C25B es un MAX485 genuino sin level-shift onboard. Su pin RO entrega ~5V que **excede el máximo absoluto del ESP32 (3.6V)**. El divisor 1kΩ/2kΩ en RO→GPIO16 es **obligatorio** (5V × 2k/(1k+2k) = 3.33V). Sin el divisor, GPIO16 puede dañarse en el primer arranque.
+**Bus Modbus (cable UTP 4 pares):**
+| Conductor | Función | Notas |
+|-----------|---------|-------|
+| Par 1 — VCC | Alimentación 5-30V para periféricos | Externa (no del ESP32 3V3) |
+| Par 2 — GND | Masa común del bus | Compartida con ESP32 |
+| Par 3 — A+ (D+) | Línea diferencial + | Sale de C25B DA |
+| Par 4 — B− (D−) | Línea diferencial − | Sale de C25B DB |
+
+**Nodos (borneras x4 por nodo):**
+| Nodo | Dispositivo | Addr Modbus |
+|------|-------------|-------------|
+| Bornera 1 | TH-MB-04S (sensor temp/hum) | 1 |
+| Bornera 2 | Relay 2CH (actuador relay) | 2 |
+| Fin de bus | Resistor 120Ω (terminación entre A+ y B−) | — |
+
+> Cada bornera de 4 posiciones tap'ea los 4 conductores (VCC, GND, A+, B−) del cable UTP. La terminación 120Ω va al final del bus, entre A+ y B−.
 
 ### ADC Suelo (GPIO34/35)
 | Origen | Destino | Señal |
 |--------|---------|-------|
-| Capacitivo AOUT | ESP32 GPIO34 | Analog (directo) |
-| HD38 AOUT | 10kΩ → ESP32 GPIO35 | Analog (con protección) |
+| ESP32 3.3V | Capacitivo VCC | Alimentación capacitivo |
+| ESP32 5V (VIN) | HD38 VCC | Alimentación HD38 |
+| ESP32 GND | Capacitivo GND, HD38 GND | Masa común |
+| Capacitivo AOUT | ESP32 GPIO34 | Analog 0-3.3V (directo) |
+| HD38 AOUT | ESP32 GPIO35 | Analog 0-5V (directo — ver Known Risks) |
 
 ---
 
@@ -78,7 +94,7 @@ Esquemáticos y guía de montaje para el sistema de monitoreo basado en **ESP32 
 ![Esquemático del bus OneWire con DS18B20 en cadena](schematics/sch_onewire.svg)
 
 ### Sensores ADC — Suelo
-![Esquemático de sensores ADC con protección recomendada](schematics/sch_adc_soil.svg)
+![Esquemático de sensores ADC — HD38 y capacitivo conectados directamente al ESP32](schematics/sch_adc_soil.svg)
 
 ### Bus RS485 — Modbus RTU
 ![Esquemático del bus RS485 con MAX485, sensor TH y relay](schematics/sch_rs485_modbus.svg)
@@ -90,26 +106,21 @@ Esquemáticos y guía de montaje para el sistema de monitoreo basado en **ESP32 
 | # | Componente | Cantidad | Especificaciones | Función |
 |---|-----------|----------|-----------------|---------|
 | 1 | ESP32 DevKit V1 (WROOM-32) | 1 | 30 pines, WiFi+BT | MCU principal |
-| 2 | Zócalo con bornes a tornillo | 1 | 2×16 pines, paso 2.54mm | Montaje ESP32 |
+| 2 | Zócalo con bornes a tornillo | 1 | 2×15 pines, paso 2.54mm | Montaje ESP32 |
 | 3 | SCD30 | 1 | I2C, 3.3V, Sensirion | CO₂ / Temp / Humedad |
 | 4 | BME280 | 0-1 | I2C, 3.3V, Bosch | Temp / Humedad / Presión |
 | 5 | DS18B20 | 1-10 | 1-Wire, 3.3V, Dallas | Temperatura (cadena) |
 | 6 | Resistor 4.7kΩ | 1 | 1/4W | Pull-up OneWire (obligatorio) |
 | 7 | Sensor capacitivo v2.0 | 0-1 | ADC, 3.3V | Humedad de suelo |
 | 8 | HD38 | 0-1 | ADC+Digital, LM393, 5V | Humedad de suelo |
-| 9 | Resistor 10kΩ | 1* | 1/4W | Protección ADC (HD38) |
-| 10 | Diodo Schottky BAT43 | 2* | Vf≈0.3V | Clamp ADC (HD38) — a 3.3V y a GND |
-| 11 | Módulo C25B (MAX485) | 0-1 | **5V** (azul básico) | Transceiver RS485 — RO requiere divisor |
-| 12 | Resistor 1kΩ | 1** | 1/4W | **Divisor RO→GPIO16 (serie)** |
-| 13 | Resistor 2kΩ | 1** | 1/4W | **Divisor RO→GPIO16 (pulldown a GND)** |
-| 14 | TH-MB-04S | 0-1 | Modbus RTU, 5-30V | Sensor temp/hum remoto |
-| 15 | Relay 2CH Modbus | 0-1 | Modbus RTU, 2×NO/NC | Actuador relay |
-| 16 | Resistor 120Ω | 2* | 1/4W | Terminación bus RS485 (extremos) |
-| 17 | Resistor 560Ω | 2* | 1/4W | Bias RS485 (1× a 3.3V en A, 1× a GND en B) |
-| 18 | Fuente USB 5V | 1 | ≥1A recomendado | Alimentación |
-
-*Componentes marcados con `*` son recomendados (protección/terminación/bias).
-**Componentes marcados con `**` son **OBLIGATORIOS** si se usa el módulo C25B / MAX485 a 5V.
+| 9 | Módulo C25B (MAX485) | 0-1 | 5V (azul básico) | Transceiver RS485 |
+| 10 | Cable UTP 4 pares | 1 | longitud según instalación | Bus Modbus (VCC + GND + A+ + B−) |
+| 11 | Bornera 4 posiciones | 1 por nodo | a tornillo, paso 5mm | Conexión bus ↔ dispositivo |
+| 12 | TH-MB-04S | 0-1 | Modbus RTU, 5-30V | Sensor temp/hum remoto |
+| 13 | Relay 2CH Modbus | 0-1 | Modbus RTU, 2×NO/NC | Actuador relay |
+| 14 | Resistor 120Ω | 1 | 1/4W | Terminación bus RS485 (al final, entre A+ y B−) |
+| 15 | Fuente USB 5V | 1 | ≥1A recomendado | Alimentación ESP32 + módulos 5V |
+| 16 | Fuente externa 5-30V | 0-1 | según consumo de periféricos Modbus | Alimentación VCC del bus Modbus |
 
 ---
 
@@ -132,54 +143,27 @@ Esquemáticos y guía de montaje para el sistema de monitoreo basado en **ESP32 
 
 ## ⚠️ Known Risks
 
-### CRÍTICO: HD38 — Sobretensión en GPIO35
+Estos son riesgos conocidos del cableado **actual** del sistema. El sistema funciona en bench así, pero hay piezas operando fuera de spec — vale documentarlas.
 
-El sensor HD38 alimentado a **5V** puede enviar hasta 5V por su salida analógica (AOUT). El ESP32 tiene un **máximo absoluto de 3.6V** en sus pines ADC.
+### HD38 → GPIO35: AO puede superar 3.3V
 
-**Conexión sin protección PUEDE DAÑAR el ESP32.**
+El sensor HD38 alimentado a **5V** puede entregar hasta 5V por su salida analógica. El máximo absoluto de los pines del ESP32 es **3.6V**. El HW actual conecta AOUT directo a GPIO35 sin protección.
 
-**Solución recomendada:**
-```
-                        3.3V
-                          ↑
-                    [Schottky BAT43]  ← clamp sobretensión
-                          |
-HD38 AOUT → [10kΩ serie] →●→ GPIO35
-                          |
-                    [Schottky BAT43]  ← clamp transitorios negativos
-                          ↓
-                         GND
-```
+**Mitigación:** medir AO del HD38 con multímetro antes de cablear. Si AO supera 3.3V en condición seca, alimentar el HD38 a **3.3V** (si funciona correctamente a ese voltaje) o reemplazar por sensor capacitivo.
 
-**Alternativa:** Alimentar el HD38 a 3.3V (si el sensor funciona correctamente a ese voltaje).
+### C25B (MAX485) RO → GPIO16: 5V hacia un pin de 3.3V
 
-### PRECAUCIÓN: Sensor Capacitivo
+El módulo **C25B** es un MAX485 genuino: requiere alimentación a **5V** (no funciona estable a 3.3V) y su salida RO entrega ~5V, por encima del máximo absoluto del ESP32 (3.6V). El HW actual conecta RO directo a GPIO16 sin protección.
 
-Algunos módulos capacitivos v1.x alimentados a 5V pueden dar AO hasta ~4.2V. **Alimentar a 3.3V** o verificar con multímetro que AO no supera 3.3V en condición seca.
+Funciona por tolerancia de la pieza, pero está fuera de spec. Si se quema GPIO16, considerar:
+- Alimentar el C25B a 3.3V (verificar que transmita estable a ese voltaje).
+- Reemplazar por transceiver nativo 3.3V (MAX3485, SP3485).
 
-### CRÍTICO: C25B (MAX485) — Sobretensión en GPIO16
+### Bus RS485 — buenas prácticas obligatorias
 
-El módulo **C25B** es un MAX485 genuino: requiere alimentación a **5V** (no funciona confiable a 3.3V) y su salida **RO entrega ~5V**. El máximo absoluto de los pines del ESP32 es **3.6V**.
-
-**Conectar RO directo a GPIO16 PUEDE DAÑAR el ESP32.**
-
-**Solución obligatoria — divisor resistivo:**
-```
-C25B RO (5V) ─[1kΩ]─●─ GPIO16
-                    │
-                  [2kΩ]
-                    │
-                   GND
-```
-Tap = 5V × 2k/(1k+2k) = **3.33V** ✓ — dentro del rango seguro del ESP32. Los valores 1k/2k mantienen impedancia baja para el bit rate de 9600 baud sin degradar la señal. Las entradas DI/DE/RE del MAX485 aceptan los 3.3V del ESP32 sin level-shifter (VIH=2V).
-
-**Alternativa:** usar un módulo con level-shift onboard (algunos C25B vienen con jumpers TERM/BIAS y traducción de nivel — verificar serigrafía) o un transceiver de 3.3V (MAX3485, SP3485).
-
-### PRECAUCIÓN: Bus RS485
-
-- **Terminación 120Ω** en ambos extremos del bus (obligatoria para cables >1m)
-- **Masa común** entre ESP32, C25B, sensor TH y relay (OBLIGATORIA)
-- **Bias resistors 560Ω**: pull-up en A (→ 3.3V) y pull-down en B (→ GND) para idle definido — ver esquemático; obligatorio en tramos largos o con múltiples nodos
+- **Terminación 120Ω** al final del bus, entre A+ y B− (instalada en este sistema).
+- **Masa común** entre ESP32, C25B, sensor TH y relay (a través del par GND del cable UTP).
+- **Cable UTP 4 pares**: usar siempre A+ y B− del MISMO par trenzado para mejor inmunidad al ruido.
 
 ---
 
@@ -192,13 +176,11 @@ Tap = 5V × 2k/(1k+2k) = **3.33V** ✓ — dentro del rango seguro del ESP32. Lo
 | DS18B20 lee 85.0°C | Conversión incompleta | Aumentar delay, verificar cable |
 | ADC siempre 0 o 4095 | Pin desconectado o saturado | Verificar conexión, voltaje <3.3V |
 | ADC errático | Ruido | Agregar 0.1µF entre AOUT y GND |
-| Modbus no responde | Polaridad RS485 | Swap A/B, verificar terminación |
-| Modbus intermitente | Sin terminación/bias | Agregar 120Ω, verificar GND común |
-| C25B no transmite | VCC=3.3V (insuficiente) | Alimentar C25B a 5V (VIN), no a 3.3V |
-| RX basura / sin datos | Falta divisor en RO | Agregar divisor 1k/2k entre RO y GPIO16 |
+| Modbus no responde | Polaridad RS485 | Swap A+/B−, verificar terminación 120Ω |
+| Modbus intermitente | Sin masa común | Verificar continuidad del par GND del UTP |
+| C25B no transmite | VCC insuficiente | Verificar 5V en VCC del C25B (no 3.3V) |
 | Brownout/reboot | Corriente insuficiente | Fuente ≥1A, verificar regulador |
-| ESP32 se daña | HD38 5V→GPIO35 | Agregar protección (ver Known Risks) |
-| ESP32 se daña al conectar C25B | RO=5V directo a GPIO16 | Insertar divisor 1k/2k (obligatorio) |
+| GPIO35 reporta valores raros | HD38 entregando >3.3V | Medir AO con multímetro (ver Known Risks) |
 
 ---
 
