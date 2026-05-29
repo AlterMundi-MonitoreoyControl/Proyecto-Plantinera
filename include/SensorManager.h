@@ -74,9 +74,22 @@ public:
         int dry = cfg["dry"] | 4095;
         int wet = cfg["wet"] | 0;
         SensorCapacitive *s = new SensorCapacitive(pin, dry, wet);
+
+        // Calibración cuadrática opcional (issue #19)
+        const char* calibMode = cfg["calib_mode"] | "linear";
+        if (strcmp(calibMode, "quadratic") == 0) {
+          float a = cfg["a"] | 0.0f;
+          float b = cfg["b"] | 0.0f;
+          float c = cfg["c"] | 0.0f;
+          s->setQuadraticCalibration(a, b, c);
+          DBG_INFO("Capacitive pin %d QUADRATIC a=%.6f b=%.6f c=%.3f\n", pin, a, b, c);
+        }
+
         if (s->init()) {
           sensors.push_back(s);
-          DBG_INFO("Capacitive sensor pin %d cal=%d/%d added\n", pin, dry, wet);
+          if (strcmp(calibMode, "quadratic") != 0) {
+            DBG_INFO("Capacitive sensor pin %d cal=%d/%d added\n", pin, dry, wet);
+          }
         }
 
       } else if (strcmp(type, "scd30") == 0) {
@@ -207,6 +220,13 @@ public:
         int flatDry = cfg["dry"] | 4095;
         int flatWet = cfg["wet"] | 0;
 
+        // Calibración cuadrática opcional (issue #19) — global al grupo HD38 del config
+        const char* calibMode = cfg["calib_mode"] | "linear";
+        float calibA = cfg["a"] | 0.0f;
+        float calibB = cfg["b"] | 0.0f;
+        float calibC = cfg["c"] | 0.0f;
+        bool useQuadratic = (strcmp(calibMode, "quadratic") == 0);
+
         for (size_t i = 0; i < pinList.size(); i++) {
           int aPin = pinList[i];
           int dry = hasDryArr ? (cfg["dry_values"][i] | flatDry) : flatDry;
@@ -216,7 +236,12 @@ public:
           snprintf(sensorName, sizeof(sensorName), "%d", aPin);
 
           HD38Sensor *s = new HD38Sensor(aPin, -1, divider, invert, sensorName);
-          s->setCalibration(dry, wet);
+          if (useQuadratic) {
+            s->setQuadraticCalibration(calibA, calibB, calibC);
+            DBG_INFO("HD38 pin %d QUADRATIC a=%.6f b=%.6f c=%.3f\n", aPin, calibA, calibB, calibC);
+          } else {
+            s->setCalibration(dry, wet);
+          }
           if (s->init()) {
             sensors.push_back(s);
             DBG_INFO("HD38 '%s' pin %d dry=%d wet=%d added\n", sensorName, aPin, dry, wet);

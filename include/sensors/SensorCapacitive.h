@@ -12,6 +12,9 @@
 #define ADC_MIN 0
 
 class SensorCapacitive : public SensorBase, public IMoistureSensor {
+public:
+    enum CalibMode { LINEAR, QUADRATIC };
+
 private:
     int pin;
     float moisture;
@@ -19,10 +22,17 @@ private:
     bool active;
     int dryValue;
     int wetValue;
+    CalibMode calibMode;
+    float calibA;
+    float calibB;
+    float calibC;
 
 public:
     SensorCapacitive(int adcPin = CAPACITIVE_PIN, int dry = ADC_MAX, int wet = ADC_MIN)
-        : SensorBase(SensorClass::ANALOG_ADC, (uint8_t)(adcPin >= 0 ? adcPin : 0xFF)), pin(adcPin), moisture(0), rawValue(0), active(false), dryValue(dry), wetValue(wet) {}
+        : SensorBase(SensorClass::ANALOG_ADC, (uint8_t)(adcPin >= 0 ? adcPin : 0xFF)),
+          pin(adcPin), moisture(0), rawValue(0), active(false),
+          dryValue(dry), wetValue(wet),
+          calibMode(LINEAR), calibA(0), calibB(0), calibC(0) {}
 
     bool init() override {
         pinMode(pin, INPUT);
@@ -41,11 +51,20 @@ public:
         if (!active) return false;
 
         rawValue = analogRead(pin);
-        moisture = map(rawValue, dryValue, wetValue, 0, 100);
-        moisture = constrain(moisture, 0, 100);
 
-        DBG_INFO("[Capacitive] pin=%d Raw=%d M=%.1f%% (dry=%d wet=%d)\n",
-                 pin, rawValue, moisture, dryValue, wetValue);
+        if (calibMode == QUADRATIC) {
+            // y = a*x^2 + b*x + c — sin clamp (devuelve crudo)
+            moisture = calibA * (float)rawValue * (float)rawValue
+                     + calibB * (float)rawValue
+                     + calibC;
+            DBG_INFO("[Capacitive] pin=%d Raw=%d M=%.3f (a=%.6f b=%.6f c=%.3f)\n",
+                     pin, rawValue, moisture, calibA, calibB, calibC);
+        } else {
+            moisture = map(rawValue, dryValue, wetValue, 0, 100);
+            moisture = constrain(moisture, 0, 100);
+            DBG_INFO("[Capacitive] pin=%d Raw=%d M=%.1f%% (dry=%d wet=%d)\n",
+                     pin, rawValue, moisture, dryValue, wetValue);
+        }
         return true;
     }
 
@@ -76,8 +95,22 @@ public:
     void setCalibration(int dry, int wet) {
         dryValue = dry;
         wetValue = wet;
-        DBG_INFO("[Capacitive] Cal: dry=%d wet=%d\n", dry, wet);
+        calibMode = LINEAR;
+        DBG_INFO("[Capacitive] Cal LINEAR: dry=%d wet=%d\n", dry, wet);
     }
+
+    void setQuadraticCalibration(float a, float b, float c) {
+        calibA = a;
+        calibB = b;
+        calibC = c;
+        calibMode = QUADRATIC;
+        DBG_INFO("[Capacitive] Cal QUADRATIC: a=%.6f b=%.6f c=%.3f\n", a, b, c);
+    }
+
+    CalibMode getCalibMode() const { return calibMode; }
+    float getCalibA()       const { return calibA; }
+    float getCalibB()       const { return calibB; }
+    float getCalibC()       const { return calibC; }
 
     // ── Mediator interface ────────────────────────────────────────────────
     SensorKey getKey() const override { return SensorBase::getKey(); }

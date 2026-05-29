@@ -436,7 +436,7 @@ void WiFiManager::loadCredentials()
 
     if (!station_cfg.ssid.isEmpty())
     {
-        String msg = "Loaded saved credentials for: " + station_cfg.ssid;
+        String msg = "Loaded credentials for: " + station_cfg.ssid;
         LOG_TRACE(msg);
     }
 }
