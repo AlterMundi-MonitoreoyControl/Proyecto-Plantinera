@@ -1,60 +1,24 @@
 #!/usr/bin/env python3
-"""Genera esquemáticos SVG del hardware del Proyecto Plantinera."""
+"""Genera esquemáticos SVG del hardware del Proyecto Plantinera.
 
+La paleta de color y los helpers de presentación (add_title / add_footer)
+vienen de schemkit: https://github.com/Pablomonte/schemkit
+"""
+
+import os
 import schemdraw
 import schemdraw.elements as elm
 from schemdraw import flow
-import os
+
+from schemkit import (
+    CONFIG as GLOBAL_CONFIG, add_title, add_footer, NOTE_COLOR,
+    C_I2C_SDA, C_I2C_SCL, C_ONEWIRE, C_ADC,
+    C_RS485_TX, C_RS485_RX, C_RS485_DE, C_BUS_A, C_BUS_B,
+    C_GPIO, C_VCC, C_GND, C_WARN,
+)
 
 OUT = os.path.join(os.path.dirname(__file__), 'schematics')
 os.makedirs(OUT, exist_ok=True)
-
-# --- Configuración visual ---
-schemdraw.theme('default')
-GLOBAL_CONFIG = {'fontsize': 11, 'unit': 3.2, 'lw': 1.6, 'font': 'sans-serif'}
-
-# Paleta — un color por señal lógica (consistente en los 6 esquemas)
-TITLE_COLOR = '#111827'  # gris casi negro
-NOTE_COLOR  = '#6b7280'  # gris medio para notas al pie
-C_I2C_SDA   = '#2563eb'  # azul     — SDA
-C_I2C_SCL   = '#16a34a'  # verde    — SCL
-C_ONEWIRE   = '#9333ea'  # violeta  — 1-Wire
-C_ADC       = '#0d9488'  # teal     — señales ADC
-C_RS485_TX  = '#ea580c'  # naranja  — TX/DI
-C_RS485_RX  = '#0284c7'  # celeste  — RX/RO
-C_RS485_DE  = '#7c3aed'  # violeta  — DE/RE
-C_BUS_A     = '#15803d'  # verde    — A+ (D+)
-C_BUS_B     = '#1e40af'  # azul     — B- (D-)
-C_GPIO      = '#92400e'  # marrón   — salidas GPIO (relays)
-C_VCC       = '#dc2626'  # rojo     — alimentación
-C_GND       = '#172554'  # azul osc — masa
-C_WARN      = '#b91c1c'  # rojo osc — advertencias
-
-
-def add_title(d, text, pad=1.4):
-    """Título centrado por encima del bounding box real del dibujo, con una
-    línea separadora tenue al estilo de hoja de datos.
-
-    Se llama al FINAL de cada función (con todos los elementos ya añadidos)
-    para que la posición sea exacta y nunca se solape con el esquema.
-    """
-    bb = d.get_bbox()
-    cx = (bb.xmin + bb.xmax) / 2
-    rule_y = bb.ymax + pad * 0.55
-    d.add(elm.Line().at((bb.xmin, rule_y)).to((bb.xmax, rule_y))
-          .color('#d1d5db').linewidth(1.0))
-    d.add(elm.Label().at((cx, rule_y + 0.3)).label(text, fontsize=15,
-          color=TITLE_COLOR, halign='center', valign='bottom'))
-
-
-def add_footer(d, text, pad=1.2):
-    """Nota al pie centrada por debajo del bounding box real del dibujo."""
-    bb = d.get_bbox()
-    cx = (bb.xmin + bb.xmax) / 2
-    y = bb.ymin - pad
-    d.add(elm.Label().at((cx, y)).label(text, fontsize=9, color=NOTE_COLOR,
-                                        halign='center', valign='top'))
-
 
 
 # ---------------------------------------------------------------------------
