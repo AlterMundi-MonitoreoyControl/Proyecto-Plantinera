@@ -7,6 +7,14 @@
 #include <Arduino.h>
 #include "../debug.h"
 
+// Pin ADC por defecto del HD-38. En ESP32-S3 el GPIO35 no es ADC (y en N16R8
+// lo usa la PSRAM octal): usamos GPIO6 (ADC1_CH5). Clásico: GPIO35 (ADC1_CH7).
+#if defined(CONFIG_IDF_TARGET_ESP32S3)
+#define HD38_PIN 6
+#else
+#define HD38_PIN 35
+#endif
+
 /**
  * Sensor HD-38 - Soil Moisture / Rain Sensor
  *
@@ -43,7 +51,7 @@ private:
     float calibC;
 
 public:
-    HD38Sensor(int aPin = 35,
+    HD38Sensor(int aPin = HD38_PIN,
                int dPin = -1,
                bool voltageDivider = true,
                bool invert = false,

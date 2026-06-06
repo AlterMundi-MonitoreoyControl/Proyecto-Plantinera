@@ -30,22 +30,24 @@ pio run -e esp32s3_multi -t upload --upload-port <PUERTO>
    - ESP32 clásico → **GPIO34** (ADC1_CH6, sin cambios)
    También se usa `CAPACITIVE_PIN` como default en `SensorManager.h` y `configFile.cpp`
    (antes `34` hardcodeado).
-3. **IP del Access Point** (`lib/WifiManager/WiFiManager.cpp` vía `WiFiManager.h`
+3. **Pin del sensor HD-38** (`include/sensors/HD38Sensor.h`): mismo caso que el
+   capacitivo → `HD38_PIN` condicional: S3 → **GPIO6** (ADC1_CH5), clásico →
+   **GPIO35**. En N16R8 el GPIO35 además lo usa la PSRAM octal. Default usado
+   también en `SensorManager.h`.
+4. **IP del Access Point** (`lib/WifiManager/WiFiManager.cpp` vía `WiFiManager.h`
    `StaConfig`): estaba en `192.168.16.10`; se corrigió a **`192.168.4.1`** para
    coincidir con el README y con la app (`DIRECT_MODE_IP`). (Bug previo, no exclusivo de S3.)
 
 ## ⚠️ Pendiente / a revisar
 
-- **Resto del mapeo de pines en S3.** Solo se ajustó el capacitivo. Verificar que
-  sean válidos/seguros en S3 (evitar strapping 0/3/45/46, USB 19/20, flash+PSRAM):
-  - OneWire (default GPIO4), RS485 `rx/tx/de` (16/17/18), relés GPIO, HD38 (35).
-  - La **UI web** (`src/web_assets.cpp`) todavía pre-llena `pin 34` (y `35` para HD38)
-    en el formulario y limita `max=39` (rango del clásico; S3 llega a 48).
-- **App: requests en paralelo vs WebServer de 1 conexión.** La app hace
-  `Promise.all([getConfig, getActual, getRelays, ...])` (~4 conexiones simultáneas),
-  pero el `WebServer` del ESP32 atiende **una conexión a la vez**. En LAN real con un
-  device probablemente funciona (backlog TCP), pero es frágil. Evaluar serializar/
-  limitar la concurrencia del lado de la app, o confirmar el comportamiento en device real.
+- **Pines digitales en S3:** OneWire (GPIO4), RS485 `rx/tx/de` (16/17/18) y relés
+  GPIO (default 2) son válidos en S3 → **sin cambios**. (Al configurar pines a mano,
+  evitar igual strapping 0/3/45/46, USB nativo 19/20 y flash/PSRAM 26-37.)
+- **UI web** (`src/web_assets.cpp`): el formulario todavía pre-llena `pin 34`/`35` y
+  limita `max=39` (rango del clásico; S3 llega a 48). Es solo la ayuda visual del form
+  (la config también se setea por API); queda pendiente hacerlo target-aware.
+- **App: requests en paralelo** — *resuelto del lado de la app*: `loadHubData` ahora
+  pide en **serie** (no `Promise.all`) para no saturar el `WebServer` de 1 conexión del ESP32.
 
 ## Verificación realizada (modo Directo)
 

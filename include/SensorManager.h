@@ -210,7 +210,7 @@ public:
           // Unified interface: same 'pin' field as capacitive
           pinList.push_back(cfg["pin"].as<int>());
         } else {
-          pinList.push_back(cfg["analog_pin"] | 35);
+          pinList.push_back(cfg["analog_pin"] | HD38_PIN);
         }
 
         // Read optional per-pin calibration arrays
