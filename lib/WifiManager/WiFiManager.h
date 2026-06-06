@@ -23,9 +23,9 @@ private:
     static const unsigned long SCAN_TIMEOUT_MS = 15000;
     
     struct StaConfig {
-        IPAddress ip = IPAddress(192, 168, 16, 10);
+        IPAddress ip = IPAddress(192, 168, 4, 1);
         IPAddress netmask = IPAddress(255, 255, 255, 0);
-        IPAddress gateway = IPAddress(192, 168, 16, 10);
+        IPAddress gateway = IPAddress(192, 168, 4, 1);
         IPAddress dns = IPAddress(0, 0, 0, 0);
     } sta_cfg;
     

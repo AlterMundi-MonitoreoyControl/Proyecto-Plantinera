@@ -453,7 +453,7 @@ void setup() {
 
   DBG_INFOLN("\n=== SYSTEM READY ===");
   DBG_INFO("  AP: %s\n", wifiManager.getAPSSID().c_str());
-  DBG_INFOLN("  Config: http://192.168.16.10");
+  DBG_INFOLN("  Config: http://192.168.4.1");
   DBG_INFOLN("  Data:   http://<IP>/data\n");
 }
 
