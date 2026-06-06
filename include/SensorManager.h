@@ -70,7 +70,7 @@ public:
       JsonObject cfg = sensorCfg["config"];
 
       if (strcmp(type, "capacitive") == 0) {
-        int pin = cfg["pin"] | 34;
+        int pin = cfg["pin"] | CAPACITIVE_PIN;
         int dry = cfg["dry"] | 4095;
         int wet = cfg["wet"] | 0;
         SensorCapacitive *s = new SensorCapacitive(pin, dry, wet);
