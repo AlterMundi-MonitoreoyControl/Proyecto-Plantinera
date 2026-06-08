@@ -526,6 +526,10 @@ void handleConfiguracion() {
     }
   }
 
+  // Pines I2C por defecto del board (para mostrarlos en la UI del BME280/SCD30).
+  doc["i2c_sda"] = SDA;
+  doc["i2c_scl"] = SCL;
+
   String output;
   serializeJson(doc, output);
   server.send(200, "application/json", output);

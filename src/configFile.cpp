@@ -25,8 +25,6 @@ void createConfigFile() {
     }
   
     JsonDocument config;
-    config["max_temperature"] = 37.7;
-    config["min_temperature"] = 37.3;
     config["rotation_duration"] = 50000;
     config["rotation_period"] = 3600000;
     config["ssid"] = "";
@@ -35,8 +33,6 @@ void createConfigFile() {
     config["tray_two_date"] = 0;
     config["tray_three_date"] = 0;
     config["incubation_period"] = 18;
-    config["max_hum"] = 65;
-    config["min_hum"] = 55;
 
     String mac = WiFi.macAddress();
     mac.replace(":", "");

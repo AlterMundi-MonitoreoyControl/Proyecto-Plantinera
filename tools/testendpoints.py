@@ -191,7 +191,7 @@ def test_configuracion_get(session, base, timeout):
 def test_configuracion_post(session, base, timeout):
     """
     POSTs a harmless config update.
-    Reads current config, changes max_temperature, and posts it back.
+    Reads current config, changes incubator_name, and posts it back.
     """
     name = "POST /config"
     print(f"\n{BOLD}{name}{RESET}")
@@ -203,7 +203,7 @@ def test_configuracion_post(session, base, timeout):
         return
         
     payload = r_get.json()
-    payload["max_temperature"] = 22.0
+    payload["incubator_name"] = payload.get("incubator_name", "") or "TestDevice"
     
     # Evitar que el ESP32 reinicie su conexión WiFi durante el POST
     payload["ssid"] = "ToChange"
