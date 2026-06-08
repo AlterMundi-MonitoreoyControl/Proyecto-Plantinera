@@ -7,7 +7,14 @@
 #include <Arduino.h>
 #include "../debug.h"
 
+// Pin ADC por defecto del sensor capacitivo.
+// En ESP32-S3 el GPIO34 NO existe como ADC -> usamos GPIO5 (ADC1_CH4).
+// En ESP32 clásico se mantiene GPIO34 (ADC1_CH6, input-only).
+#if defined(CONFIG_IDF_TARGET_ESP32S3)
+#define CAPACITIVE_PIN 5
+#else
 #define CAPACITIVE_PIN 34
+#endif
 #define ADC_MAX 4095
 #define ADC_MIN 0
 

@@ -6,6 +6,7 @@
 #include "globals.h"
 #include "constants.h"
 #include "debug.h"
+#include "sensors/SensorCapacitive.h"  // CAPACITIVE_PIN (condicional por target)
 
 
 
@@ -49,7 +50,7 @@ void createConfigFile() {
     cap1["type"] = "capacitive";
     cap1["enabled"] = true;
     JsonObject cap1Cfg = cap1["config"].to<JsonObject>();
-    cap1Cfg["pin"] = 34;
+    cap1Cfg["pin"] = CAPACITIVE_PIN;
     cap1Cfg["name"] = "Soil1";
     cap1Cfg["calib_mode"] = "linear"; // "linear" | "quadratic" (issue #19)
     cap1Cfg["a"] = 0.0;
@@ -151,7 +152,7 @@ JsonDocument loadConfig() {
       cap["type"] = "capacitive";
       cap["enabled"] = false;
       JsonObject capCfg = cap["config"].to<JsonObject>();
-      capCfg["pin"] = 34;
+      capCfg["pin"] = CAPACITIVE_PIN;
       capCfg["name"] = "Soil1";
       capCfg["calib_mode"] = "linear";
       capCfg["a"] = 0.0;
