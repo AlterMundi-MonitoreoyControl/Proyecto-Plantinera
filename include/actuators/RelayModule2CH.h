@@ -361,8 +361,10 @@ public:
      */
     String getStatusJSON() {
         String json = "{";
+        json += "\"type\":\"relay_2ch\",";
         json += "\"address\":" + String(_address) + ",";
         json += "\"alias\":\"" + _alias + "\",";
+        json += "\"active\":" + String(_active ? "true" : "false") + ",";
         json += "\"r0\":" + String(_ch0.getState() ? 1 : 0) + ",";
         json += "\"r1\":" + String(_ch1.getState() ? 1 : 0) + ",";
         json += "\"state\":[" + String(_ch0.getState() ? "true" : "false") + "," + String(_ch1.getState() ? "true" : "false") + "],";
