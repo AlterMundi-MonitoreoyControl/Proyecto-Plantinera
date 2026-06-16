@@ -515,6 +515,17 @@ void handleConfiguracion() {
     doc["current_wifi_channel"] = 0;
   }
 
+  // Compat LibreAgro: la app valida config.relays[].config.address (int 1-247)
+  // en TODOS los relays. Los gpio guardan "pin" en vez de "address" → exponer
+  // address (= pin) para que el alta del hub no rechace el /config.
+  JsonArray relays = doc["relays"].as<JsonArray>();
+  for (JsonObject relay : relays) {
+    JsonObject cfg = relay["config"];
+    if (!cfg.isNull() && !cfg["address"].is<int>() && cfg["pin"].is<int>()) {
+      cfg["address"] = cfg["pin"].as<int>();
+    }
+  }
+
   String output;
   serializeJson(doc, output);
   server.send(200, "application/json", output);
@@ -710,8 +721,13 @@ void handleRelayList() {
       obj["type"] = "gpio";
       obj["address"] = g.pin;
       obj["alias"] = g.alias;
+      obj["active"] = true;
       JsonArray stateArr = obj["state"].to<JsonArray>();
       stateArr.add(g.actuator->getState());
+      stateArr.add(false);
+      JsonArray inputStateArr = obj["input_state"].to<JsonArray>();
+      inputStateArr.add(false);
+      inputStateArr.add(false);
     }
   }
 
