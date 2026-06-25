@@ -45,15 +45,21 @@ void checkForUpdates() {
   String latestTag = getLatestReleaseTag(YOUR_GITHUB_USERNAME, YOUR_REPO_NAME);
   DBG_VERBOSE("Version: %s -> %s\n", FIRMWARE_VERSION, latestTag.c_str());
 
+#ifndef FIRMWARE_ENV
+#define FIRMWARE_ENV "unknown"
+#endif
+
   if (latestTag != "") {
     if (latestTag != FIRMWARE_VERSION) {
       const esp_partition_t *update_partition =
           esp_ota_get_next_update_partition(NULL);
 
+      // Cada entorno descarga su propio binario (firmware-<env>.bin)
+      // FIRMWARE_ENV se define en platformio.ini como -DFIRMWARE_ENV='"<env>"'
       String firmwareURL = "https://github.com/" +
                            String(YOUR_GITHUB_USERNAME) + "/" +
                            String(YOUR_REPO_NAME) + "/releases/download/" +
-                           latestTag + "/firmware.bin";
+                           latestTag + "/firmware-" + String(FIRMWARE_ENV) + ".bin";
       DBG_INFO("OTA URL: %s\n", firmwareURL.c_str());
 
       HTTPClient redirectHttp;
