@@ -813,26 +813,6 @@ const char *config_html = R"=====(<!DOCTYPE html>
                     <label for="incubator_name">Nombre del Dispositivo</label>
                     <input type="text" id="incubator_name" name="incubator_name">
                 </div>
-                <div class="inline-group">
-                    <div class="form-group">
-                        <label for="min_temperature">Temperatura Mín (°C)</label>
-                        <input type="number" id="min_temperature" name="min_temperature" step="0.1">
-                    </div>
-                    <div class="form-group">
-                        <label for="max_temperature">Temperatura Máx (°C)</label>
-                        <input type="number" id="max_temperature" name="max_temperature" step="0.1">
-                    </div>
-                </div>
-                <div class="inline-group">
-                    <div class="form-group">
-                        <label for="min_hum">Humedad Mín (%)</label>
-                        <input type="number" id="min_hum" name="min_hum" min="0" max="100">
-                    </div>
-                    <div class="form-group">
-                        <label for="max_hum">Humedad Máx (%)</label>
-                        <input type="number" id="max_hum" name="max_hum" min="0" max="100">
-                    </div>
-                </div>
             </div>
 
             <!-- ESP-NOW Section -->
@@ -1215,10 +1195,6 @@ function populateForm(config) {
 
     // Sistema
     document.getElementById('incubator_name').value = config.incubator_name || config.moni_name || '';
-    document.getElementById('min_temperature').value = config.min_temperature || '';
-    document.getElementById('max_temperature').value = config.max_temperature || '';
-    document.getElementById('min_hum').value = config.min_hum || '';
-    document.getElementById('max_hum').value = config.max_hum || '';
 
     // RS485 (nested object structure)
     const rs485 = config.rs485 || {};
@@ -1264,6 +1240,18 @@ function toggleESPNowConfig() {
     document.getElementById('espnow_config').style.display = enabled ? 'block' : 'none';
 }
 
+function toggleSensorConfig(index) {
+    const enabled = document.getElementById(`sensor_${index}_enabled`).checked;
+    const cfg = document.getElementById(`sensor_${index}_config`);
+    if (cfg) cfg.style.display = enabled ? 'block' : 'none';
+}
+
+function toggleRelayConfig(index) {
+    const enabled = document.getElementById(`relay_${index}_enabled`).checked;
+    const cfg = document.getElementById(`relay_${index}_config`);
+    if (cfg) cfg.style.display = enabled ? 'block' : 'none';
+}
+
 async function loadESPNowStatus() {
     try {
         const response = await fetch('/espnow/status');
@@ -1306,25 +1294,49 @@ function renderSensors(sensors) {
     const container = document.getElementById('sensors-list');
     container.innerHTML = '';
 
-    // Use default sensors if none configured
-    if (!Array.isArray(sensors) || sensors.length === 0) {
-        sensors = DEFAULT_SENSORS;
+    // Create a working copy of sensors
+    let displaySensors = [];
+    if (Array.isArray(sensors) && sensors.length > 0) {
+        displaySensors = [...sensors];
+    } else {
+        displaySensors = JSON.parse(JSON.stringify(DEFAULT_SENSORS));
         container.innerHTML = '<div class="info-text" style="background: #fff3cd; border-left: 4px solid var(--altermundi-orange); padding: 12px; margin-bottom: 15px;">⚠️ Usando configuración por defecto. Guarda para aplicar.</div>';
     }
 
-    sensors.forEach((sensor, index) => {
+    // Inject missing singleton sensors from DEFAULT_SENSORS as disabled
+    const singletonTypes = ['scd30', 'bme280', 'modbus_th', 'modbus_soil_7in1', 'onewire', 'internal_temp'];
+    DEFAULT_SENSORS.forEach(defSensor => {
+        if (singletonTypes.includes(defSensor.type)) {
+            const exists = displaySensors.find(s => s.type === defSensor.type);
+            if (!exists) {
+                displaySensors.push({
+                    type: defSensor.type,
+                    enabled: false,
+                    config: JSON.parse(JSON.stringify(defSensor.config))
+                });
+            }
+        }
+    });
+
+    // Ensure currentConfig.sensors is updated with the injected sensors so they are saved
+    currentConfig.sensors = displaySensors;
+
+    displaySensors.forEach((sensor, index) => {
         const sensorDiv = document.createElement('div');
         sensorDiv.className = 'sensor-item';
         sensorDiv.innerHTML = `
             <div class="form-group">
                 <input type="checkbox" id="sensor_${index}_enabled"
                        data-sensor-index="${index}" class="sensor-enabled"
+                       onchange="toggleSensorConfig(${index})"
                        ${sensor.enabled ? 'checked' : ''}>
                 <label class="checkbox-label" for="sensor_${index}_enabled">
                     <strong>${sensor.type.toUpperCase()}</strong>
                 </label>
             </div>
-            ${renderSensorConfig(sensor, index)}
+            <div id="sensor_${index}_config" style="display:${sensor.enabled ? 'block' : 'none'};">
+                ${renderSensorConfig(sensor, index)}
+            </div>
         `;
         container.appendChild(sensorDiv);
     });
@@ -1344,6 +1356,14 @@ function renderSensorConfig(sensor, index) {
 
         case 'internal_temp':
             return '<div class="info-text">Sensor de temperatura interna del ESP32. No requiere configuración adicional.</div>';
+
+        case 'bme280': {
+            const sda = currentConfig.i2c_sda, scl = currentConfig.i2c_scl;
+            const pinTxt = (sda !== undefined && scl !== undefined)
+                ? `SDA: GPIO${sda} · SCL: GPIO${scl}` : 'Bus I2C del sistema';
+            return `<div class="info-text">Sensor I2C (temp/hum/presión).
+                Conexión: <strong>${pinTxt}</strong> · Dirección: 0x76/0x77 (autodetecta).</div>`;
+        }
 
         case 'capacitive':
         case 'hd38':
@@ -1656,12 +1676,14 @@ function renderRelays(relays) {
         relayDiv.innerHTML = `
             <div class="hdr" style="display:flex; justify-content:space-between; margin-bottom:10px;">
                 <div class="form-group" style="margin-bottom:0;">
-                    <input type="checkbox" id="relay_${index}_enabled" ${relay.enabled ? 'checked' : ''}>
+                    <input type="checkbox" id="relay_${index}_enabled" onchange="toggleRelayConfig(${index})" ${relay.enabled ? 'checked' : ''}>
                     <label class="checkbox-label" for="relay_${index}_enabled"><strong>Habilitado (${relay.type === 'gpio' ? 'GPIO' : 'Modbus'})</strong></label>
                 </div>
                 <button type="button" style="background:none; border:none; color:#dc3545; cursor:pointer;" onclick="removeRelay(${index})">🗑️</button>
             </div>
-            ${configHtml}
+            <div id="relay_${index}_config" style="display:${relay.enabled ? 'block' : 'none'};">
+                ${configHtml}
+            </div>
         `;
         container.appendChild(relayDiv);
     });
@@ -1724,10 +1746,6 @@ function buildConfigFromForm() {
 
     // Sistema
     config.incubator_name = document.getElementById('incubator_name').value;
-    config.min_temperature = parseFloat(document.getElementById('min_temperature').value);
-    config.max_temperature = parseFloat(document.getElementById('max_temperature').value);
-    config.min_hum = parseInt(document.getElementById('min_hum').value);
-    config.max_hum = parseInt(document.getElementById('max_hum').value);
 
     // RS485 (nested object structure)
     config.rs485 = {

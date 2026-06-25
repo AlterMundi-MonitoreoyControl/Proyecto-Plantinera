@@ -1,6 +1,4 @@
 {
-	"max_temperature": 37.7,
-	"min_temperature": 37.3,
 	"rotation_duration": 50000,
 	"rotation_period": 3600000,
 	"ssid": "ToChange",
@@ -9,8 +7,6 @@
 	"tray_two_date": 0,
 	"tray_three_date": 0,
 	"incubation_period": 18,
-	"max_hum": 65,
-	"min_hum": 55,
 	"hash": "80F3DA9AE520",
 	"incubator_name": "moni-80F3DA9AE520",
 	"sensors": [
