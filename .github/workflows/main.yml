@@ -14,10 +14,10 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
 
     - name: Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: '3.x'
 
@@ -41,28 +41,60 @@ jobs:
     - name: Run Unit Tests
       run: pio test -e native_test
 
-    - name: Build Firmware
+    # ── Compilar todos los entornos con OTA habilitado ───────────────────────
+    - name: Build esp32dev_multi
+      run: |
+        pio run -e esp32dev_multi
+        pio run -e esp32dev_multi --target buildfs
+
+    - name: Build esp32dev_multi_prod
+      run: |
+        pio run -e esp32dev_multi_prod
+        pio run -e esp32dev_multi_prod --target buildfs
+
+    - name: Build esp32s3_multi
+      run: |
+        pio run -e esp32s3_multi
+        pio run -e esp32s3_multi --target buildfs
+
+    # ── Reunir binarios con nombre diferenciado ──────────────────────────────
+    - name: Collect binaries
       run: |
         mkdir -p binarios
-        pio run -e esp32dev_multi            # Compila todo, incluyendo firmware.bin
-        pio run -e esp32dev_multi --target buildfs   # También el SPIFFS
-        cp .pio/build/esp32dev_multi/firmware.bin binarios/firmware.bin
-        cp .pio/build/esp32dev_multi/spiffs.bin binarios/ || echo "No se generó spiffs.bin"
-        cp build_reports/size_report_esp32dev_multi.txt binarios/ || echo "No se generaron reportes de build"
 
+        for ENV in esp32dev_multi esp32dev_multi_prod esp32s3_multi; do
+          cp ".pio/build/${ENV}/firmware.bin"  "binarios/firmware-${ENV}.bin"
+          cp ".pio/build/${ENV}/spiffs.bin"    "binarios/spiffs-${ENV}.bin"  2>/dev/null || \
+            echo "No spiffs.bin para ${ENV}"
+          cp "build_reports/size_report_${ENV}.txt" "binarios/" 2>/dev/null || \
+            echo "No size_report para ${ENV}"
+        done
+
+        echo "── Binarios generados ──"
+        ls -lh binarios/
+
+    # ── Versión ──────────────────────────────────────────────────────────────
     - name: Get Version
       id: get_version
       run: |
         VERSION=$(sed -n 's/#define FIRMWARE_VERSION "\([^"]*\)"/\1/p' include/version.h)
         echo "version=$VERSION" >> $GITHUB_ENV
 
+    # ── Release (solo en push a main) ────────────────────────────────────────
     - name: Create Release
       if: github.event_name == 'push' && github.ref == 'refs/heads/main'
       uses: ncipollo/release-action@v1
       with:
         artifacts: "binarios/*"
         tag: "${{ env.version }}"
-        name: Release "${{ env.version }}"
-        body: "Binarios de firmware generados automáticamente"
+        name: "Release ${{ env.version }}"
+        body: |
+          Binarios de firmware generados automáticamente.
+
+          | Archivo | Hardware |
+          |---------|----------|
+          | `firmware-esp32dev_multi.bin` | ESP32 (debug) |
+          | `firmware-esp32dev_multi_prod.bin` | ESP32 (producción) |
+          | `firmware-esp32s3_multi.bin` | ESP32-S3 |
         generateReleaseNotes: true
         token: ${{ secrets.GITHUB_TOKEN }}
