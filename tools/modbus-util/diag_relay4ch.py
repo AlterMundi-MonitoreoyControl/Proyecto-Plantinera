@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Diagnóstico y control para módulo de relé Modbus 4CH (LC-Modbus-4R-D7)
-SKU: LC-Modbus-4R-D7 | Default addr: 255 (0xFF) | Default baud: 9600
+SKU: LC-Modbus-4R-D7 v 2.1 | Default addr: 255 (0xFF) | Default baud: 9600
 
 ══════════════════════════════════════════════════════
   COMANDOS
