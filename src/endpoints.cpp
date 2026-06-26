@@ -324,7 +324,7 @@ void handleMediciones() {
 #endif
   DBG_INFO("[Endpoint] entradas digitales ....... " );
 
-  // Entradas digitales de módulos 2CH
+  // Entradas y salidas de módulos 2CH
   for (auto *r : relayMgr.getRelays()) {
     if (!r) continue;
     DBG_INFO("[Endpoint] Syncing relay addr=%d inputs is active= %i\n", r->getAddress(), r->isActive());
@@ -332,16 +332,33 @@ void handleMediciones() {
     if (r->isActive()) {
       r->syncState();
       r->syncInputs(mediator);
+      r->syncOutputs(mediator);  // coil states as sensor readings
     }
 
     JsonObject sensorObj = sensors.add<JsonObject>();
-    sensorObj["type"] = "Entradas Digitales";
+    sensorObj["type"] = "Relé Modbus 2CH";
     sensorObj["id"] = "modbus_relay_" + String(r->getAddress());
     sensorObj["icon"] = "🔌";
     sensorObj["error"] = !r->isActive();
 
     JsonArray readings = sensorObj["readings"].to<JsonArray>();
 
+    // Outputs (coil states)
+    static const SensorVariable outVars2[2] = {
+        SensorVariable::RELAY_OUT_1, SensorVariable::RELAY_OUT_2
+    };
+    for (int i = 0; i < 2; i++) {
+        JsonObject out = readings.add<JsonObject>();
+        out["label"]      = "OUT " + String(i+1);
+        out["value"]      = String(r->getState(i) ? 1 : 0);
+        out["unit"]       = "";
+        out["status"]     = r->isActive() ? (r->getState(i) ? "ok" : "warn") : "warn";
+        out["key_device"] = (uint8_t)(ESP.getEfuseMac() & 0xFF);
+        out["key_sensor"] = r->getAddress();
+        out["key_var"]    = (uint8_t)outVars2[i];
+    }
+
+    // Inputs (optocoupler)
     JsonObject in1 = readings.add<JsonObject>();
     in1["label"] = "IN 1"; in1["value"] = String(r->getInputState(0) ? 1 : 0);
     in1["unit"] = ""; in1["status"] = r->isActive() ? "ok" : "warn";
@@ -357,7 +374,7 @@ void handleMediciones() {
     in2["key_var"] = (uint8_t)SensorVariable::DIGITAL_IN_2;
   }
 
-  // Entradas digitales de módulos 4CH
+  // Entradas y salidas de módulos 4CH
   for (auto *r : relayMgr.getRelays4ch()) {
     if (!r) continue;
     DBG_INFO("[Endpoint] Syncing relay4 addr=%d inputs is active= %i\n", r->getAddress(), r->isActive());
@@ -365,17 +382,35 @@ void handleMediciones() {
     if (r->isActive()) {
       r->syncState();
       r->syncInputs(mediator);
+      r->syncOutputs(mediator);  // coil states as sensor readings
     }
 
     JsonObject sensorObj = sensors.add<JsonObject>();
-    sensorObj["type"] = "Entradas Digitales 4CH";
+    sensorObj["type"] = "Relé Modbus 4CH";
     sensorObj["id"] = "modbus_relay4_" + String(r->getAddress());
     sensorObj["icon"] = "🔌";
     sensorObj["error"] = !r->isActive();
 
     JsonArray readings = sensorObj["readings"].to<JsonArray>();
 
-    static const SensorVariable varIds4[4] = {
+    // Outputs (coil states)
+    static const SensorVariable outVars4[4] = {
+        SensorVariable::RELAY_OUT_1, SensorVariable::RELAY_OUT_2,
+        SensorVariable::RELAY_OUT_3, SensorVariable::RELAY_OUT_4
+    };
+    for (int i = 0; i < 4; i++) {
+        JsonObject out = readings.add<JsonObject>();
+        out["label"]      = "OUT " + String(i+1);
+        out["value"]      = String(r->getState(i) ? 1 : 0);
+        out["unit"]       = "";
+        out["status"]     = r->isActive() ? (r->getState(i) ? "ok" : "warn") : "warn";
+        out["key_device"] = (uint8_t)(ESP.getEfuseMac() & 0xFF);
+        out["key_sensor"] = r->getAddress();
+        out["key_var"]    = (uint8_t)outVars4[i];
+    }
+
+    // Inputs (optocoupler)
+    static const SensorVariable inVars4[4] = {
         SensorVariable::DIGITAL_IN_1, SensorVariable::DIGITAL_IN_2,
         SensorVariable::DIGITAL_IN_3, SensorVariable::DIGITAL_IN_4
     };
@@ -387,7 +422,7 @@ void handleMediciones() {
         inp["status"]     = r->isActive() ? "ok" : "warn";
         inp["key_device"] = (uint8_t)(ESP.getEfuseMac() & 0xFF);
         inp["key_sensor"] = r->getAddress();
-        inp["key_var"]    = (uint8_t)varIds4[i];
+        inp["key_var"]    = (uint8_t)inVars4[i];
     }
   }
 

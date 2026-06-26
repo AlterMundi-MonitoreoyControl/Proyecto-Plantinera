@@ -340,6 +340,33 @@ public:
         return false;
     }
 
+    /**
+     * Inject relay coil states into the mediator as SensorReadings.
+     * Uses cached _relayState[] — call syncState() first to refresh.
+     * varId: RELAY_OUT_1 .. RELAY_OUT_4
+     */
+    void syncOutputs(ControlMediator& mediator) {
+        static uint32_t outCounter = 2000000; // distinct counter space
+        outCounter++;
+
+        static const SensorVariable varIds[4] = {
+            SensorVariable::RELAY_OUT_1, SensorVariable::RELAY_OUT_2,
+            SensorVariable::RELAY_OUT_3, SensorVariable::RELAY_OUT_4
+        };
+
+        for (int i = 0; i < 4; i++) {
+            SensorReading r;
+            r.key.deviceId = (uint8_t)(ESP.getEfuseMac() & 0xFF);
+            r.key.sensorId = _address;
+            r.key.varId    = (uint8_t)varIds[i];
+            r.value        = _relayState[i] ? 1.0f : 0.0f;
+            r.counter      = outCounter;
+            mediator.onSensorReading(r);
+        }
+        DBG_VERBOSE("[Relay4 %d] syncOutputs R1=%d R2=%d R3=%d R4=%d\n",
+                    _address, _relayState[0], _relayState[1], _relayState[2], _relayState[3]);
+    }
+
     String getStatusJSON() {
         String json = "{";
         json += "\"type\":\"relay_4ch\",";

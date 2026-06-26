@@ -702,8 +702,12 @@ const char *data_html = R"=====(<!DOCTYPE html>
                 card.className = 'card';
                 card.style.borderLeftColor = '#0198fe';
 
+                const typeLabel = r.type === 'gpio' ? 'Relé GPIO'
+                                : r.type === 'relay_4ch' ? 'Relé Modbus 4CH'
+                                : 'Relé Modbus 2CH';
+
                 let html = `<div class='hdr'>
-                    <span class='type'>${r.type === 'gpio' ? 'Relé GPIO' : 'Relé Modbus'}</span>
+                    <span class='type'>${typeLabel}</span>
                     <span class='id'>${r.type === 'gpio' ? 'Pin: ' : 'Dir: '}${r.address}</span>
                 </div>
                 <div class='vals'>`;
@@ -714,13 +718,12 @@ const char *data_html = R"=====(<!DOCTYPE html>
                     </div>`;
                 }
 
-                // Outputs (Channels)
+                // Outputs (Channels) — clickable toggle
                 if (r.state) {
                     r.state.forEach((state, idx) => {
                         const status = state ? "ok" : "warn";
                         const label = state ? "ON" : "OFF";
-                        const chanLabel = r.type === 'gpio' ? 'Estado' : `Canal ${idx + 1}`;
-                        // Note: toggle function needs to be global or accessible
+                        const chanLabel = r.type === 'gpio' ? 'Estado' : `Salida ${idx + 1}`;
                         html += `<div class='val ${status}' style='cursor:pointer' 
                              onclick='toggle(${r.address}, ${idx})'>
                              <span>${chanLabel}</span><b>${label}</b>
@@ -728,7 +731,7 @@ const char *data_html = R"=====(<!DOCTYPE html>
                     });
                 }
 
-                // Inputs
+                // Inputs — read-only
                 if (r.input_state) {
                     r.input_state.forEach((state, idx) => {
                         const status = state ? "ok" : "warn";

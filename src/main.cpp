@@ -640,6 +640,7 @@ void loop() {
       if (r && r->isActive()) {
         r->syncState();
         r->syncInputs(mediator);
+        r->syncOutputs(mediator);   // relay coil states as sensor readings
 
         if (r->isActive()) {
           String data = r->getGrafanaString();
@@ -658,6 +659,7 @@ void loop() {
       if (r && r->isActive()) {
         r->syncState();
         r->syncInputs(mediator);
+        r->syncOutputs(mediator);   // relay coil states as sensor readings
 
         if (r->isActive()) {
           String data = r->getGrafanaString();

@@ -29,6 +29,10 @@ enum class SensorVariable : uint8_t {
     DIGITAL_IN_2= 12,
     DIGITAL_IN_3= 13,
     DIGITAL_IN_4= 14,
+    RELAY_OUT_1 = 20,
+    RELAY_OUT_2 = 21,
+    RELAY_OUT_3 = 22,
+    RELAY_OUT_4 = 23,
     UNKNOWN     = 255
 };
 
