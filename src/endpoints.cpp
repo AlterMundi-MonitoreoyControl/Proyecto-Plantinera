@@ -324,10 +324,10 @@ void handleMediciones() {
 #endif
   DBG_INFO("[Endpoint] entradas digitales ....... " );
 
-  // Exponer Entradas Digitales de los reles Modbus como sensores visuales
+  // Entradas digitales de módulos 2CH
   for (auto *r : relayMgr.getRelays()) {
     if (!r) continue;
-    DBG_INFO("[Endpoint] Syncing relay addr=%d inputs is active= %i\n", r->getAddress(), r->isActive() );
+    DBG_INFO("[Endpoint] Syncing relay addr=%d inputs is active= %i\n", r->getAddress(), r->isActive());
 
     if (r->isActive()) {
       r->syncState();
@@ -343,22 +343,52 @@ void handleMediciones() {
     JsonArray readings = sensorObj["readings"].to<JsonArray>();
 
     JsonObject in1 = readings.add<JsonObject>();
-    in1["label"] = "IN 1";
-    in1["value"] = String(r->getInputState(0) ? 1 : 0);
-    in1["unit"]  = "";
-    in1["status"]= r->isActive() ? "ok" : "warn";
+    in1["label"] = "IN 1"; in1["value"] = String(r->getInputState(0) ? 1 : 0);
+    in1["unit"] = ""; in1["status"] = r->isActive() ? "ok" : "warn";
     in1["key_device"] = (uint8_t)(ESP.getEfuseMac() & 0xFF);
     in1["key_sensor"] = r->getAddress();
     in1["key_var"] = (uint8_t)SensorVariable::DIGITAL_IN_1;
 
     JsonObject in2 = readings.add<JsonObject>();
-    in2["label"] = "IN 2";
-    in2["value"] = String(r->getInputState(1) ? 1 : 0);
-    in2["unit"]  = "";
-    in2["status"]= r->isActive() ? "ok" : "warn";
+    in2["label"] = "IN 2"; in2["value"] = String(r->getInputState(1) ? 1 : 0);
+    in2["unit"] = ""; in2["status"] = r->isActive() ? "ok" : "warn";
     in2["key_device"] = (uint8_t)(ESP.getEfuseMac() & 0xFF);
     in2["key_sensor"] = r->getAddress();
     in2["key_var"] = (uint8_t)SensorVariable::DIGITAL_IN_2;
+  }
+
+  // Entradas digitales de módulos 4CH
+  for (auto *r : relayMgr.getRelays4ch()) {
+    if (!r) continue;
+    DBG_INFO("[Endpoint] Syncing relay4 addr=%d inputs is active= %i\n", r->getAddress(), r->isActive());
+
+    if (r->isActive()) {
+      r->syncState();
+      r->syncInputs(mediator);
+    }
+
+    JsonObject sensorObj = sensors.add<JsonObject>();
+    sensorObj["type"] = "Entradas Digitales 4CH";
+    sensorObj["id"] = "modbus_relay4_" + String(r->getAddress());
+    sensorObj["icon"] = "🔌";
+    sensorObj["error"] = !r->isActive();
+
+    JsonArray readings = sensorObj["readings"].to<JsonArray>();
+
+    static const SensorVariable varIds4[4] = {
+        SensorVariable::DIGITAL_IN_1, SensorVariable::DIGITAL_IN_2,
+        SensorVariable::DIGITAL_IN_3, SensorVariable::DIGITAL_IN_4
+    };
+    for (int i = 0; i < 4; i++) {
+        JsonObject inp = readings.add<JsonObject>();
+        inp["label"]      = "IN " + String(i+1);
+        inp["value"]      = String(r->getInputState(i) ? 1 : 0);
+        inp["unit"]       = "";
+        inp["status"]     = r->isActive() ? "ok" : "warn";
+        inp["key_device"] = (uint8_t)(ESP.getEfuseMac() & 0xFF);
+        inp["key_sensor"] = r->getAddress();
+        inp["key_var"]    = (uint8_t)varIds4[i];
+    }
   }
 
   // Legacy flat fields for the LibreAgro mobile app (kept alongside sensors[]).
@@ -719,6 +749,15 @@ void handleRelayList() {
     }
   }
 
+  for (auto *r : relayMgr.getRelays4ch()) {
+    if (r) {
+      if (r->isActive()) r->syncState();
+      JsonDocument tempDoc;
+      deserializeJson(tempDoc, r->getStatusJSON());
+      arr.add(tempDoc);
+    }
+  }
+
   for (auto& g : relayMgr.getGpioRelays()) {
     if (g.actuator) {
       JsonObject obj = arr.add<JsonObject>();
@@ -752,9 +791,24 @@ void handleRelayToggle() {
 
   for (auto *r : relayMgr.getRelays()) {
     if (r->getAddress() == addr) {
+      if (ch < 0 || ch > 1) { server.send(400, "text/plain", "ch must be 0-1 for relay_2ch"); return; }
       ActuatorCommand cmd;
       cmd.actuatorId = r->getChannel(ch)->getId();
-      cmd.state = !r->getChannel(ch)->getState(); // Commuta el estado LÓGICO
+      cmd.state = !r->getChannel(ch)->getState();
+      cmd.durationMs = 0;
+      cmd.priority = 3;
+      mediator.onManualCommand(cmd);
+      server.send(200, "text/plain", "OK");
+      return;
+    }
+  }
+
+  for (auto *r : relayMgr.getRelays4ch()) {
+    if (r->getAddress() == addr) {
+      if (ch < 0 || ch > 3) { server.send(400, "text/plain", "ch must be 0-3 for relay_4ch"); return; }
+      ActuatorCommand cmd;
+      cmd.actuatorId = r->getChannel(ch)->getId();
+      cmd.state = !r->getChannel(ch)->getState();
       cmd.durationMs = 0;
       cmd.priority = 3;
       mediator.onManualCommand(cmd);

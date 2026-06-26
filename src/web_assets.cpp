@@ -937,7 +937,9 @@ const char *config_html = R"=====(<!DOCTYPE html>
                 <div id="relays-list"></div>
                 <div style="display: flex; gap: 10px; margin-top: 10px;">
                     <button type="button" class="btn btn-secondary"
-                        style="padding: 6px 12px; font-size: 12px;" onclick="addRelay('relay_2ch')">+ Agregar Relé Modbus</button>
+                        style="padding: 6px 12px; font-size: 12px;" onclick="addRelay('relay_2ch')">+ Agregar Relé Modbus 2CH</button>
+                    <button type="button" class="btn btn-secondary"
+                        style="padding: 6px 12px; font-size: 12px;" onclick="addRelay('relay_4ch')">+ Agregar Relé Modbus 4CH</button>
                     <button type="button" class="btn btn-secondary"
                         style="padding: 6px 12px; font-size: 12px;" onclick="addRelay('gpio')">+ Agregar Relé GPIO</button>
                 </div>
@@ -1017,7 +1019,18 @@ const DEFAULT_SENSORS = [
 ];
 
 const DEFAULT_RELAY_TEMPLATE = {
-    type: "relay_2ch", enabled: true, config: { address: 1, alias: "Nuevo Relé" }
+    type: "relay_2ch", enabled: true,
+    config: { address: 1, alias: "Nuevo Relé 2CH",
+              ch0: { max_on_ms: 0, min_off_ms: 0, inverted: false },
+              ch1: { max_on_ms: 0, min_off_ms: 0, inverted: false } }
+};
+const DEFAULT_RELAY_4CH_TEMPLATE = {
+    type: "relay_4ch", enabled: true,
+    config: { address: 255, alias: "Nuevo Relé 4CH",
+              ch0: { max_on_ms: 0, min_off_ms: 0, inverted: false },
+              ch1: { max_on_ms: 0, min_off_ms: 0, inverted: false },
+              ch2: { max_on_ms: 0, min_off_ms: 0, inverted: false },
+              ch3: { max_on_ms: 0, min_off_ms: 0, inverted: false } }
 };
 const DEFAULT_GPIO_RELAY_TEMPLATE = {
     type: "gpio", enabled: true, config: { pin: 2, alias: "Nuevo Relé GPIO", active_low: false }
@@ -1625,6 +1638,43 @@ function renderRelays(relays) {
                     </div>
                 </div>
             </div>`;
+        } else if (relay.type === 'relay_4ch') {
+            // Build 4 channel config blocks
+            let chBlocks = '';
+            for (let ch = 0; ch < 4; ch++) {
+                const key = `ch${ch}`;
+                const chCfg = relay.config[key] || {};
+                chBlocks += `
+            <div style="background:#f0f7ff; padding:12px; border-radius:4px; margin-bottom:8px; border-left: 3px solid var(--altermundi-blue);">
+                <strong style="font-size:13px; color:var(--altermundi-blue); display:block; margin-bottom:10px;">Canal ${ch + 1}</strong>
+                <div class="inline-group">
+                    <div class="form-group">
+                        <label>Max ON (ms)</label>
+                        <input type="number" id="relay_${index}_ch${ch}_max" value="${chCfg.max_on_ms || 0}" placeholder="0 = Infinito">
+                    </div>
+                    <div class="form-group">
+                        <label>Min OFF (ms)</label>
+                        <input type="number" id="relay_${index}_ch${ch}_min" value="${chCfg.min_off_ms || 0}" placeholder="0 = Sin límite">
+                    </div>
+                    <div class="form-group" style="padding-top:25px;">
+                        <input type="checkbox" id="relay_${index}_ch${ch}_inv" ${chCfg.inverted ? 'checked' : ''}>
+                        <label class="checkbox-label" for="relay_${index}_ch${ch}_inv">Lógica Invertida</label>
+                    </div>
+                </div>
+            </div>`;
+            }
+            configHtml = `
+            <div class="inline-group">
+                <div class="form-group">
+                    <label>Alias</label>
+                    <input type="text" id="relay_${index}_alias" value="${relay.config.alias || ''}" placeholder="Ej: Reles principales">
+                </div>
+                <div class="form-group">
+                    <label>Dirección Modbus</label>
+                    <input type="number" id="relay_${index}_address" value="${relay.config.address || 255}" min="1" max="254">
+                </div>
+            </div>
+            ${chBlocks}`;
         } else {
             configHtml = `
             <div class="inline-group">
@@ -1677,7 +1727,7 @@ function renderRelays(relays) {
             <div class="hdr" style="display:flex; justify-content:space-between; margin-bottom:10px;">
                 <div class="form-group" style="margin-bottom:0;">
                     <input type="checkbox" id="relay_${index}_enabled" onchange="toggleRelayConfig(${index})" ${relay.enabled ? 'checked' : ''}>
-                    <label class="checkbox-label" for="relay_${index}_enabled"><strong>Habilitado (${relay.type === 'gpio' ? 'GPIO' : 'Modbus'})</strong></label>
+                    <label class="checkbox-label" for="relay_${index}_enabled"><strong>Habilitado (${relay.type === 'gpio' ? 'GPIO' : relay.type === 'relay_4ch' ? 'Modbus 4CH' : 'Modbus 2CH'})</strong></label>
                 </div>
                 <button type="button" style="background:none; border:none; color:#dc3545; cursor:pointer;" onclick="removeRelay(${index})">🗑️</button>
             </div>
@@ -1694,6 +1744,8 @@ function addRelay(type = 'relay_2ch') {
     let newRelay;
     if (type === 'gpio') {
         newRelay = JSON.parse(JSON.stringify(DEFAULT_GPIO_RELAY_TEMPLATE));
+    } else if (type === 'relay_4ch') {
+        newRelay = JSON.parse(JSON.stringify(DEFAULT_RELAY_4CH_TEMPLATE));
     } else {
         newRelay = JSON.parse(JSON.stringify(DEFAULT_RELAY_TEMPLATE));
     }
@@ -1861,6 +1913,16 @@ function buildConfigFromForm() {
                 if (maxOnInput) relay.config.max_on_ms = parseInt(maxOnInput.value) || 0;
                 const minOffInput = document.getElementById(`relay_${index}_min_off`);
                 if (minOffInput) relay.config.min_off_ms = parseInt(minOffInput.value) || 0;
+            } else if (relay.type === 'relay_4ch') {
+                const addrInput = document.getElementById(`relay_${index}_address`);
+                if (addrInput) relay.config.address = parseInt(addrInput.value);
+                for (let ch = 0; ch < 4; ch++) {
+                    relay.config[`ch${ch}`] = {
+                        max_on_ms:  parseInt(document.getElementById(`relay_${index}_ch${ch}_max`)?.value || 0),
+                        min_off_ms: parseInt(document.getElementById(`relay_${index}_ch${ch}_min`)?.value || 0),
+                        inverted:   document.getElementById(`relay_${index}_ch${ch}_inv`)?.checked || false
+                    };
+                }
             } else {
                 const addrInput = document.getElementById(`relay_${index}_address`);
                 if (addrInput) relay.config.address = parseInt(addrInput.value);

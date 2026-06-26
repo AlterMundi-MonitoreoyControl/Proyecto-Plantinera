@@ -27,6 +27,8 @@ enum class SensorVariable : uint8_t {
     RAW_ADC     = 10,
     DIGITAL_IN_1= 11,
     DIGITAL_IN_2= 12,
+    DIGITAL_IN_3= 13,
+    DIGITAL_IN_4= 14,
     UNKNOWN     = 255
 };
 
