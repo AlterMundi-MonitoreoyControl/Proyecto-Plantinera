@@ -1,14 +1,46 @@
 #!/usr/bin/env python3
 """
-Diagnóstico para módulo de relé Modbus 4CH (LC-Modbus-4R-D7)
-Default addr: 255 (0xFF), baudrate: 9600
+Diagnóstico y control para módulo de relé Modbus 4CH (LC-Modbus-4R-D7)
+SKU: LC-Modbus-4R-D7 | Default addr: 255 (0xFF) | Default baud: 9600
 
-Uso:
-  python diag_relay4ch.py                     — escanea addr 255,1,2,3
-  python diag_relay4ch.py 100                 — escanea addr 100
-  python diag_relay4ch.py 100 on  [1-4]       — enciende relé (default=1)
-  python diag_relay4ch.py 100 off [1-4]       — apaga relé (default=1)
-  python diag_relay4ch.py 100 status          — lee estado de relés y entradas
+══════════════════════════════════════════════════════
+  COMANDOS
+══════════════════════════════════════════════════════
+
+  SCAN (descubrimiento via broadcast FC03):
+    python diag_relay4ch.py
+    python diag_relay4ch.py 100        — fallback directo a addr 100
+
+  CONTROL DE RELÉS (FC05):
+    python diag_relay4ch.py <addr> on  [1-4]   — enciende relé (default ch=1)
+    python diag_relay4ch.py <addr> off [1-4]   — apaga relé
+    Ejemplos:
+      python diag_relay4ch.py 100 on           — enciende relé 1
+      python diag_relay4ch.py 100 on  3        — enciende relé 3
+      python diag_relay4ch.py 100 off 2        — apaga relé 2
+
+  ESTADO (FC01 relés + FC02 entradas):
+    python diag_relay4ch.py <addr> status
+    Ejemplo:
+      python diag_relay4ch.py 100 status
+
+  CAMBIAR DIRECCIÓN (FC16 broadcast):
+    python diag_relay4ch.py setaddr <nueva_addr>
+    Ejemplo:
+      python diag_relay4ch.py setaddr 5        — cambia addr a 5 (broadcast)
+    ⚠️  Reconectar o reiniciar el módulo puede ser necesario para que tome efecto.
+    ⚠️  Válido solo si hay UN único dispositivo en el bus.
+
+══════════════════════════════════════════════════════
+  HARDWARE
+══════════════════════════════════════════════════════
+  Alimentación : DC 7-24V (terminal VCC/GND o jack DC-005)
+  RS485        : A+ → A+,  B- → B-
+  TTL UART     : GND→GND, RXD→TXD host, TXD→RXD host
+  Relés        : NO/NC/COM, 10A 250VAC
+  Entradas     : IN1-IN4, optoacopladas DC 3.3-30V
+  Baud rates   : 4800 / 9600 (default) / 19200
+  Addr range   : 1-255, default 255 (0xFF)
 """
 
 import serial
@@ -120,6 +152,37 @@ def test_read_device_addr(ser):
         return dev_addr
     return None
 
+# ── Cambiar dirección ─────────────────────────────────────────────────────────
+def set_device_addr(ser, new_addr):
+    """FC16 broadcast — Escribe la nueva dirección Modbus en el dispositivo.
+    Datasheet cmd 7/8: 00 10 00 00 00 01 02 00 <addr> CRC
+    El dispositivo responde haciendo eco del frame completo.
+    """
+    if not 1 <= new_addr <= 255:
+        print(f"  ❌ Dirección inválida: {new_addr} (debe ser 1-255)")
+        return False
+
+    # FC16 Write Multiple Registers, broadcast addr=0
+    frame = build_frame(0x00, 0x10, 0x00, 0x00, 0x00, 0x01, 0x02, 0x00, new_addr)
+    # Response es eco completo del request (11 bytes según datasheet)
+    raw = transact(ser, frame, 7, f"FC16 SetAddr→{new_addr}")
+    if raw and len(raw) >= 2 and raw[1] == 0x10:
+        print(f"  ✅ Dirección cambiada a {new_addr} (0x{new_addr:02X})")
+        print("  ℹ️  Verificando con broadcast FC03...")
+        time.sleep(0.3)
+        confirmed = test_read_device_addr(ser)
+        if confirmed == new_addr:
+            print(f"  ✅ Confirmado: dispositivo responde en addr={new_addr}")
+        else:
+            print(f"  ⚠️  Broadcast reporta addr={confirmed} (esperaba {new_addr})")
+            print("      El módulo puede necesitar reinicio para aplicar el cambio.")
+        return True
+    elif raw and (raw[1] & 0x80):
+        print(f"  ❌ Excepción Modbus: código {raw[2]:#04x}")
+    else:
+        print("  ❌ Sin respuesta o respuesta inválida")
+    return False
+
 # ── Relay write ───────────────────────────────────────────────────────────────
 def write_relay(ser, addr, channel, state):
     """FC05 — Enciende o apaga un relé individual. channel: 1-4, state: True=ON."""
@@ -156,41 +219,43 @@ def open_port():
         sys.exit(1)
 
 def run_scan(ser, addresses):
-    """Escanea las direcciones dadas, y como último recurso usa broadcast."""
+    """Descubre el dispositivo via broadcast FC03, luego prueba FC01/FC02/FC05."""
     found_addr = None
 
-    for addr in addresses:
+    # Paso 1: broadcast FC03 para leer dirección real del dispositivo
+    dev_addr = test_read_device_addr(ser)
+    if dev_addr is not None:
+        found_addr = dev_addr
         print(f"\n{'─'*45}")
-        print(f"🔎 Probando dirección {addr} (0x{addr:02X})")
+        print(f"🔎 Probando addr={found_addr} (0x{found_addr:02X}) hallada por broadcast")
         print(f"{'─'*45}")
-
-        ok1 = test_fc01_read_coils(ser, addr)
         time.sleep(0.1)
-        ok2 = test_fc02_read_inputs(ser, addr)
-
-        if ok1 or ok2:
-            found_addr = addr
-            print(f"\n🎉 ¡Dispositivo encontrado en addr={addr}!")
-            print("   Probando escritura FC05 (toggle relé 1)...")
+        ok1 = test_fc01_read_coils(ser, found_addr)
+        time.sleep(0.1)
+        ok2 = test_fc02_read_inputs(ser, found_addr)
+        time.sleep(0.1)
+        test_fc05_toggle(ser, found_addr)
+    else:
+        # Fallback: escanear las direcciones provistas manualmente
+        print("\n⚠️  Broadcast sin respuesta, probando direcciones manuales...")
+        for addr in addresses:
+            print(f"\n{'─'*45}")
+            print(f"🔎 Probando dirección {addr} (0x{addr:02X})")
+            print(f"{'─'*45}")
+            ok1 = test_fc01_read_coils(ser, addr)
             time.sleep(0.1)
-            test_fc05_toggle(ser, addr)
-            break
-        else:
-            print(f"  — Sin respuesta en addr={addr}")
-
-    if found_addr is None:
-        # Último recurso: broadcast para descubrir la dirección
-        dev_addr = test_read_device_addr(ser)
-        if dev_addr:
-            found_addr = dev_addr
-            print(f"\n🎉 Dispositivo hallado vía broadcast en addr={found_addr}. Probando FC01/FC02...")
-            time.sleep(0.1)
-            test_fc01_read_coils(ser, found_addr)
-            time.sleep(0.1)
-            test_fc02_read_inputs(ser, found_addr)
+            ok2 = test_fc02_read_inputs(ser, addr)
+            if ok1 or ok2:
+                found_addr = addr
+                print(f"\n🎉 ¡Dispositivo encontrado en addr={addr}!")
+                time.sleep(0.1)
+                test_fc05_toggle(ser, addr)
+                break
+            else:
+                print(f"  — Sin respuesta en addr={addr}")
 
     print(f"\n{'='*55}")
-    if found_addr:
+    if found_addr is not None:
         print(f"✅ RESULTADO: dispositivo encontrado en addr={found_addr}")
     else:
         print("❌ RESULTADO: ninguna respuesta recibida")
@@ -207,6 +272,15 @@ def main():
     print(f"\n{'='*55}")
     print(f"  Relay 4CH — Puerto: {PORT} @ {BAUD} baud")
     print(f"{'='*55}\n")
+
+    # ── setaddr ───────────────────────────────────────────────────────────────
+    # Usage: diag_relay4ch.py setaddr <new_addr>
+    if len(args) >= 2 and args[0].lower() == "setaddr":
+        new_addr = int(args[1])
+        ser = open_port()
+        set_device_addr(ser, new_addr)
+        ser.close()
+        return
 
     # ── write / on / off ─────────────────────────────────────────────────────
     # Usage: diag_relay4ch.py <addr> on|off [channel]
@@ -232,7 +306,7 @@ def main():
         return
 
     # ── scan ──────────────────────────────────────────────────────────────────
-    addresses = [255, 1, 2, 3] if not args else [int(args[0])]
+    addresses = [5, 1, 2, 3] if not args else [int(args[0])]
     ser = open_port()
     run_scan(ser, addresses)
     ser.close()
