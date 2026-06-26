@@ -3,11 +3,12 @@
 Diagnóstico para módulo de relé Modbus 4CH (LC-Modbus-4R-D7)
 Default addr: 255 (0xFF), baudrate: 9600
 
-Pruebas que realiza:
-  1. FC01 — Leer estado de coils (relés 1-4)
-  2. FC02 — Leer entradas optoaisladas (IN1-IN4)
-  3. FC05 — Escribir coil 1 ON y luego OFF (prueba de escritura)
-  Usa también broadcast addr=0 para FC05 si el addr normal falla.
+Uso:
+  python diag_relay4ch.py                     — escanea addr 255,1,2,3
+  python diag_relay4ch.py 100                 — escanea addr 100
+  python diag_relay4ch.py 100 on  [1-4]       — enciende relé (default=1)
+  python diag_relay4ch.py 100 off [1-4]       — apaga relé (default=1)
+  python diag_relay4ch.py 100 status          — lee estado de relés y entradas
 """
 
 import serial
@@ -18,9 +19,6 @@ import sys
 PORT    = "/dev/ttyUSB2"
 BAUD    = 9600
 TIMEOUT = 1.0
-
-# Dirección a probar (puede pasarse como arg)
-ADDRESSES = [255, 1, 2, 3] if len(sys.argv) < 2 else [int(sys.argv[1])]
 
 # ── CRC16 Modbus ──────────────────────────────────────────────────────────────
 def crc16(data: bytes) -> bytes:
@@ -68,30 +66,28 @@ def transact(ser: serial.Serial, frame: bytes, expected_len: int, label: str):
 
 # ── Tests ─────────────────────────────────────────────────────────────────────
 def test_fc01_read_coils(ser, addr):
-    """FC01 — Lee 4 coils desde reg 0x0000"""
-    frame = build_frame(addr, 0x01, 0x00, 0x00, 0x00, 0x04)  # start=0, qty=4
-    raw = transact(ser, frame, 2, "FC01 ReadCoils x4")
+    """FC01 — Lee 8 coils desde reg 0x0000 (datasheet: qty=0x08)"""
+    frame = build_frame(addr, 0x01, 0x00, 0x00, 0x00, 0x08)  # start=0, qty=8
+    raw = transact(ser, frame, 2, "FC01 ReadCoils x8")
     if raw and len(raw) >= 4 and raw[1] == 0x01:
-        byte_count = raw[2]
-        coil_byte  = raw[3]
+        coil_byte = raw[3]
         states = [(coil_byte >> i) & 1 for i in range(4)]
         print(f"  ✅ FC01 OK — Relés: R1={states[0]} R2={states[1]} R3={states[2]} R4={states[3]}")
         return True
-    elif raw and raw[1] & 0x80:
+    elif raw and (raw[1] & 0x80):
         print(f"  ❌ Excepción Modbus: código {raw[2]:#04x}")
     return False
 
 def test_fc02_read_inputs(ser, addr):
-    """FC02 — Lee 4 discrete inputs desde reg 0x0000"""
-    frame = build_frame(addr, 0x02, 0x00, 0x00, 0x00, 0x04)
-    raw = transact(ser, frame, 2, "FC02 ReadInputs x4")
+    """FC02 — Lee 8 discrete inputs desde reg 0x0000 (datasheet: qty=0x08)"""
+    frame = build_frame(addr, 0x02, 0x00, 0x00, 0x00, 0x08)  # start=0, qty=8
+    raw = transact(ser, frame, 2, "FC02 ReadInputs x8")
     if raw and len(raw) >= 4 and raw[1] == 0x02:
-        byte_count = raw[2]
-        in_byte    = raw[3]
+        in_byte = raw[3]
         states = [(in_byte >> i) & 1 for i in range(4)]
         print(f"  ✅ FC02 OK — Entradas: IN1={states[0]} IN2={states[1]} IN3={states[2]} IN4={states[3]}")
         return True
-    elif raw and raw[1] & 0x80:
+    elif raw and (raw[1] & 0x80):
         print(f"  ❌ Excepción Modbus: código {raw[2]:#04x}")
     return False
 
@@ -124,28 +120,46 @@ def test_read_device_addr(ser):
         return dev_addr
     return None
 
-# ── Main ──────────────────────────────────────────────────────────────────────
-def main():
-    print(f"\n{'='*55}")
-    print(f"  Diagnóstico Relay 4CH — Puerto: {PORT} @ {BAUD} baud")
-    print(f"{'='*55}\n")
+# ── Relay write ───────────────────────────────────────────────────────────────
+def write_relay(ser, addr, channel, state):
+    """FC05 — Enciende o apaga un relé individual. channel: 1-4, state: True=ON."""
+    if not 1 <= channel <= 4:
+        print(f"  ❌ Canal inválido: {channel} (debe ser 1-4)")
+        return False
+    reg = channel - 1  # relay 1 → 0x0000, relay 2 → 0x0001, ...
+    data_hi = 0xFF if state else 0x00
+    frame = build_frame(addr, 0x05, 0x00, reg, data_hi, 0x00)
+    label = f"FC05 Relay{channel}={'ON' if state else 'OFF'}"
+    raw = transact(ser, frame, 6, label)
+    if raw and len(raw) >= 6 and raw[1] == 0x05:
+        print(f"  ✅ Relé {channel} {'ON' if state else 'OFF'} — Echo OK")
+        return True
+    elif raw and (raw[1] & 0x80):
+        print(f"  ❌ Excepción Modbus: código {raw[2]:#04x}")
+    else:
+        print("  ❌ Sin respuesta o respuesta inválida")
+    return False
 
+# ── Main ──────────────────────────────────────────────────────────────────────
+def open_port():
     try:
         ser = serial.Serial(
             port=PORT, baudrate=BAUD,
             bytesize=8, parity='N', stopbits=1,
             timeout=TIMEOUT
         )
+        print(f"✅ Puerto {PORT} abierto\n")
+        time.sleep(0.2)
+        return ser
     except Exception as e:
         print(f"❌ No se pudo abrir {PORT}: {e}")
         sys.exit(1)
 
-    print(f"✅ Puerto {PORT} abierto\n")
-    time.sleep(0.2)
-
+def run_scan(ser, addresses):
+    """Escanea las direcciones dadas, y como último recurso usa broadcast."""
     found_addr = None
 
-    for addr in ADDRESSES:
+    for addr in addresses:
         print(f"\n{'─'*45}")
         print(f"🔎 Probando dirección {addr} (0x{addr:02X})")
         print(f"{'─'*45}")
@@ -157,7 +171,7 @@ def main():
         if ok1 or ok2:
             found_addr = addr
             print(f"\n🎉 ¡Dispositivo encontrado en addr={addr}!")
-            print("   Probando escritura FC05...")
+            print("   Probando escritura FC05 (toggle relé 1)...")
             time.sleep(0.1)
             test_fc05_toggle(ser, addr)
             break
@@ -169,6 +183,11 @@ def main():
         dev_addr = test_read_device_addr(ser)
         if dev_addr:
             found_addr = dev_addr
+            print(f"\n🎉 Dispositivo hallado vía broadcast en addr={found_addr}. Probando FC01/FC02...")
+            time.sleep(0.1)
+            test_fc01_read_coils(ser, found_addr)
+            time.sleep(0.1)
+            test_fc02_read_inputs(ser, found_addr)
 
     print(f"\n{'='*55}")
     if found_addr:
@@ -177,11 +196,45 @@ def main():
         print("❌ RESULTADO: ninguna respuesta recibida")
         print("\n   Posibles causas:")
         print("   • Cableado A+/B- invertido")
-        print("   • Baudrate diferente (prueba 4800 ó 19200 como arg2)")
+        print("   • Baudrate diferente (prueba 4800 ó 19200)")
         print("   • Módulo sin alimentación DC7-24V")
         print("   • Puerto serie en uso por otro proceso (monitor serial)")
     print(f"{'='*55}\n")
 
+def main():
+    args = sys.argv[1:]
+
+    print(f"\n{'='*55}")
+    print(f"  Relay 4CH — Puerto: {PORT} @ {BAUD} baud")
+    print(f"{'='*55}\n")
+
+    # ── write / on / off ─────────────────────────────────────────────────────
+    # Usage: diag_relay4ch.py <addr> on|off [channel]
+    if len(args) >= 2 and args[1].lower() in ("on", "off"):
+        addr    = int(args[0])
+        state   = args[1].lower() == "on"
+        channel = int(args[2]) if len(args) >= 3 else 1
+        ser = open_port()
+        write_relay(ser, addr, channel, state)
+        ser.close()
+        return
+
+    # ── status ────────────────────────────────────────────────────────────────
+    # Usage: diag_relay4ch.py <addr> status
+    if len(args) >= 2 and args[1].lower() == "status":
+        addr = int(args[0])
+        ser = open_port()
+        print(f"🔎 Estado del dispositivo addr={addr} (0x{addr:02X})")
+        test_fc01_read_coils(ser, addr)
+        time.sleep(0.1)
+        test_fc02_read_inputs(ser, addr)
+        ser.close()
+        return
+
+    # ── scan ──────────────────────────────────────────────────────────────────
+    addresses = [255, 1, 2, 3] if not args else [int(args[0])]
+    ser = open_port()
+    run_scan(ser, addresses)
     ser.close()
 
 if __name__ == "__main__":
