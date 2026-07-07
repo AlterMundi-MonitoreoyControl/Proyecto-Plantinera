@@ -7,7 +7,9 @@ using namespace fakeit;
 #include <Arduino.h>
 #endif
 
-extern void testCreateConfigFile();
+extern void testMigration_BackfillsHashAndRanges_OnLegacyConfig();
+extern void testMigration_PreservesExistingValues();
+extern void testMigration_BackfillsEmptyHash();
 extern void testHandleMediciones();
 extern void testHandleConfiguracion();
 extern void testSendDataGrafana();
@@ -40,7 +42,9 @@ void tearDown() {}
 #ifndef ARDUINO
 int main() {
     UNITY_BEGIN();
-    RUN_TEST(testCreateConfigFile);
+    RUN_TEST(testMigration_BackfillsHashAndRanges_OnLegacyConfig);
+    RUN_TEST(testMigration_PreservesExistingValues);
+    RUN_TEST(testMigration_BackfillsEmptyHash);
     RUN_TEST(testHandleMediciones);
     RUN_TEST(testHandleConfiguracion);
     RUN_TEST(testCheckForUpdates);
@@ -71,7 +75,9 @@ void setup() {
     // Damos un pequeño retraso para que el monitor serie se conecte
     delay(2000);
     UNITY_BEGIN();
-    RUN_TEST(testCreateConfigFile);
+    RUN_TEST(testMigration_BackfillsHashAndRanges_OnLegacyConfig);
+    RUN_TEST(testMigration_PreservesExistingValues);
+    RUN_TEST(testMigration_BackfillsEmptyHash);
     RUN_TEST(testHandleMediciones);
     RUN_TEST(testHandleConfiguracion);
     RUN_TEST(testCheckForUpdates);
