@@ -1,7 +1,7 @@
 Modbus RTU 4-Way Relay Module RS485/TTL UART Input Output
 Date:2023-09-13    Views:
 
-SKU: LC-Modbus-4R-D7
+SKU: LC-Modbus-4R-D7 v 2.1
 
 Overview
 LC 4-Way Modbus relay module equipped with mature and stable 8-bit MCU and RS485 level communication chip,adopt standard Modbus RTU format RS485 communication protocol,It can realize 4-Way optocoupler input signal detection and 4-Way relay output, can be used for digital detection or power control occasions.

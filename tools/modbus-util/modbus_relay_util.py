@@ -48,7 +48,7 @@ import struct
 import time
 import sys
 
-PORT    = "/dev/ttyUSB2"
+PORT    = "/dev/ttyUSB0"
 BAUD    = 9600
 TIMEOUT = 1.0
 
