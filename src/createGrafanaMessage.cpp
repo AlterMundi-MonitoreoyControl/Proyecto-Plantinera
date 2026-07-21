@@ -1,6 +1,7 @@
 #include "createGrafanaMessage.h"
 #include <WiFi.h>
 #include <constants.h>
+#include "configFile.h"
 
 /**
  * Helper function to build the device name from deviceId
@@ -10,13 +11,28 @@
 static void buildDeviceName(char* device_name, size_t size, const char* deviceId) {
   if (deviceId && strncmp(deviceId, "moni-", 5) == 0) {
     snprintf(device_name, size, "%s", deviceId);
-    
-  } else {
-    // For local sensors, use gateway MAC
-    String mac = WiFi.macAddress();
-    mac.replace(":", "");
-    snprintf(device_name, size, "moni-%s", mac.c_str());
+    return;
   }
+
+  // Sensores locales: el tag `device` debe coincidir con lo que la app LibreAgro
+  // consulta = `moni-<hash>` donde hash = config.json["hash"]. Antes se usaba la
+  // MAC en vivo (WiFi.macAddress()), que en este device NO coincide con el hash
+  // del config → la app no encontraba la telemetría. Cacheamos el nombre una vez.
+  static char cached[64] = {0};
+  if (cached[0] == '\0') {
+    JsonDocument cfg = loadConfig();
+    const char* hash = cfg["hash"] | "";
+    if (hash[0] != '\0' && strncmp(hash, "moni-", 5) == 0) {
+      snprintf(cached, sizeof(cached), "%s", hash);
+    } else if (hash[0] != '\0') {
+      snprintf(cached, sizeof(cached), "moni-%s", hash);
+    } else {
+      String mac = WiFi.macAddress();
+      mac.replace(":", "");
+      snprintf(cached, sizeof(cached), "moni-%s", mac.c_str());
+    }
+  }
+  snprintf(device_name, size, "%s", cached);
 }
 
 /**
