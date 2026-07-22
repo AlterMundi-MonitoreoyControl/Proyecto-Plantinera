@@ -1,3 +1,4 @@
+#include "PushSubscriberManager.h"
 #include "actuators/RelayManager.h"
 #include "configFile.h"
 #include "constants.h"
@@ -341,6 +342,10 @@ void setup() {
   server.on("/rules-editor",     HTTP_GET,  handleRulesEditor);
   server.on("/api/admin/info", HTTP_GET, handleApiAdminInfo);
   server.on("/api/admin/password", HTTP_POST, handleApiAdminPassword);
+
+  // UnifiedPush endpoints
+  server.on("/api/notify/subscribers", HTTP_GET, handleNotifySubscribers);
+  server.on("/api/notify/subscribe", HTTP_POST, handleNotifySubscribe);
 
   server.on("/style.css", HTTP_GET, handleStyle);
   server.on("/config.js", HTTP_GET, handleConfigJs);

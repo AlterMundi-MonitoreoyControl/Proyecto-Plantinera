@@ -26,6 +26,8 @@
 | GET | [/rules-editor](#get-rules-editor) | | Editor visual de reglas |
 | GET | [/api/admin/info](#get-apiadmininfo) | | Estado de contraseña admin |
 | POST | [/api/admin/password](#post-apiadminpassword) | 🔒 | Cambiar contraseña admin |
+| GET | [/api/notify/subscribers](#get-apinotifysubscribers) | | Lista de suscriptores Push UnifiedPush |
+| POST | [/api/notify/subscribe](#post-apinotifysubscribe) | | Registrar / actualizar endpoint Push |
 | GET | [/wifi](#get-wifi) | | Escanear redes WiFi |
 | POST | [/save](#post-save) | | Guardar credenciales WiFi |
 | GET | [/espnow/status](#get-espnowstatus) | | Estado ESP-NOW |
@@ -416,6 +418,59 @@ Solo disponible en builds con `ENABLE_ESPNOW`.
 
 ---
 
+## Notificaciones Push (UnifiedPush)
+
+En el **flujo de registro invertido**, la aplicación móvil Android (LibreAgro) obtiene un endpoint de notificaciones único provisto por su distribuidor UnifiedPush (ej. `ntfy.sh`) y notifica al ESP32 que posee ese identificador único para recibir alarmas.
+
+El ESP32 almacena hasta **5 suscriptores** en memoria no volátil (NVS/Preferences) **bajo demanda** (0 consumo estático de memoria RAM). Al ocurrir un evento de alarma (ej. temperatura fuera de rango, bajo heap, etc.), el ESP32 emite la notificación como fallback al canal ntfy legacy (`https://ntfy.sh/moni-{MAC}`) y realiza un HTTP POST a cada endpoint registrado con un rate-limit de 3 segundos entre envíos.
+
+### GET /api/notify/subscribers
+
+Devuelve el identificador de topic único del dispositivo (`moni-{MAC}`) y la lista actual de endpoints suscriptos almacenados.
+
+**Respuesta (HTTP 200 OK):**
+```json
+{
+  "topic": "moni-004B12EE1FF4",
+  "subscribers": [
+    {
+      "endpoint": "https://ntfy.sh/upqWunC0oivigx?up=1",
+      "added_at": 1784730000
+    }
+  ]
+}
+```
+
+---
+
+### POST /api/notify/subscribe
+
+Registra o actualiza el endpoint de notificaciones Push provisto por la app Android LibreAgro.
+
+**Request Body:**
+```json
+{
+  "endpoint": "https://ntfy.sh/upqWunC0oivigx?up=1",
+  "instance": "moni-004B12EE1FF4"
+}
+```
+
+- `endpoint` (requerido): String HTTP/HTTPS no vacío generado por el proveedor UnifiedPush del dispositivo móvil.
+- `instance` (opcional): Topic/instancia del dispositivo ESP32.
+
+**Respuesta de Éxito (HTTP 200 OK):**
+```json
+{
+  "status": "ok",
+  "total_subscribers": 1
+}
+```
+
+**Respuestas de Error:**
+- `400 Bad Request`: `{"status":"error","message":"Invalid endpoint URL"}` si el campo `endpoint` es inválido o no comienza con `http://` o `https://`.
+
+---
+
 ## Páginas HTML
 
 | Ruta | Descripción |
@@ -478,6 +533,14 @@ curl http://192.168.4.1/calibrate-scd30 | jq
 
 # Factory reset
 curl -X POST http://192.168.4.1/config/reset
+
+# Consultar suscriptores Push UnifiedPush
+curl http://192.168.4.1/api/notify/subscribers | jq
+
+# Registrar endpoint Push del teléfono Android en el ESP32
+curl -X POST http://192.168.4.1/api/notify/subscribe \
+  -H "Content-Type: application/json" \
+  -d '{"endpoint":"https://ntfy.sh/upqWunC0oivigx?up=1","instance":"moni-004B12EE1FF4"}'
 ```
 
 ---

@@ -18,6 +18,10 @@ void handleFavicon();
 void handleApiAdminInfo();
 void handleApiAdminPassword();
 
+// UnifiedPush endpoints
+void handleNotifySubscribers();  // GET  /api/notify/subscribers
+void handleNotifySubscribe();    // POST /api/notify/subscribe
+
 // Mediator / actuator endpoints
 void handleActuatorCommand();   // POST /actuator/command
 void handleActuatorStatus();    // GET  /actuator/status

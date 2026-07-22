@@ -29,6 +29,9 @@ extern void testAdminPassword_RejectsTooLong();
 extern void testAdminPassword_RejectsSameAsCurrent();
 extern void testAdminPassword_RequiresCurrentWhenConfigured();
 extern void testAdminPassword_AllowsFirstSetWhenUnconfigured();
+extern void testPushSubscriberManager_EndpointValidation();
+extern void testPushSubscriberManager_AddAndUpdate();
+extern void testPushSubscriberManager_JsonFormat();
 
 void setUp() {
 #ifndef ARDUINO
@@ -64,6 +67,10 @@ int main() {
     RUN_TEST(testAdminPassword_RejectsSameAsCurrent);
     RUN_TEST(testAdminPassword_RequiresCurrentWhenConfigured);
     RUN_TEST(testAdminPassword_AllowsFirstSetWhenUnconfigured);
+
+    RUN_TEST(testPushSubscriberManager_EndpointValidation);
+    RUN_TEST(testPushSubscriberManager_AddAndUpdate);
+    RUN_TEST(testPushSubscriberManager_JsonFormat);
     return UNITY_END();
 }
 #else
