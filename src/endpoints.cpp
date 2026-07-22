@@ -1113,8 +1113,8 @@ void handleNotifySubscribe() {
   res["status"] = "ok";
   res["total_subscribers"] = count;
 
-  String resStr;
+  std::string resStr;
   serializeJson(res, resStr);
-  server.send(200, "application/json", resStr);
+  server.send(200, "application/json", resStr.c_str());
 }
 

@@ -27,6 +27,7 @@ extern void testWifiPasswordLength_RejectsTooLong();
 extern void testAdminPassword_RejectsShort();
 extern void testAdminPassword_RejectsTooLong();
 extern void testAdminPassword_RejectsSameAsCurrent();
+extern void testAdminPassword_RequiresCurrentWhenConfigured();
 extern void testAdminPassword_AllowsFirstSetWhenUnconfigured();
 extern void testPushSubscriberManager_EndpointValidation();
 extern void testPushSubscriberManager_AddAndUpdate();

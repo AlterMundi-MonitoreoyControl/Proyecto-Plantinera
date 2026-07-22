@@ -79,9 +79,9 @@ private:
             obj["endpoint"] = sub.endpoint;
             obj["added_at"] = sub.added_at;
         }
-        String jsonStr;
+        std::string jsonStr;
         serializeJson(doc, jsonStr);
-        prefs.putString("subs", jsonStr);
+        prefs.putString("subs", jsonStr.c_str());
         prefs.end();
 #endif
     }
@@ -184,9 +184,9 @@ public:
             obj["endpoint"] = sub.endpoint;
             obj["added_at"] = sub.added_at;
         }
-        String output;
+        std::string output;
         serializeJson(doc, output);
-        return output;
+        return String(output.c_str());
     }
 
     void notifySubscribers(const String& message) {
