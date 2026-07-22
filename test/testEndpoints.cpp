@@ -113,3 +113,60 @@ void testAdminPassword_AllowsFirstSetWhenUnconfigured() {
     TEST_ASSERT_TRUE(s.configured);
     TEST_ASSERT_EQUAL_STRING("firstpass1", s.stored.c_str());
 }
+
+#include "PushSubscriberManager.h"
+
+void testPushSubscriberManager_EndpointValidation() {
+    TEST_ASSERT_FALSE(PushSubscriberManager::isValidEndpointUrl(""));
+    TEST_ASSERT_FALSE(PushSubscriberManager::isValidEndpointUrl("ftp://invalid.url"));
+    TEST_ASSERT_FALSE(PushSubscriberManager::isValidEndpointUrl("ntfy.sh/test"));
+    TEST_ASSERT_TRUE(PushSubscriberManager::isValidEndpointUrl("http://ntfy.sh/test"));
+    TEST_ASSERT_TRUE(PushSubscriberManager::isValidEndpointUrl("https://ntfy.sh/upqWunC0oivigx?up=1"));
+}
+
+void testPushSubscriberManager_AddAndUpdate() {
+    auto& mgr = PushSubscriberManager::getInstance();
+    mgr.clearSubscribers();
+    TEST_ASSERT_EQUAL_UINT(0, mgr.getSubscriberCount());
+
+    TEST_ASSERT_TRUE(mgr.addOrUpdateSubscriber("https://ntfy.sh/sub1", 1000));
+    TEST_ASSERT_EQUAL_UINT(1, mgr.getSubscriberCount());
+    TEST_ASSERT_EQUAL_UINT(1000, mgr.getSubscribers()[0].added_at);
+
+    // Update timestamp
+    TEST_ASSERT_TRUE(mgr.addOrUpdateSubscriber("https://ntfy.sh/sub1", 2000));
+    TEST_ASSERT_EQUAL_UINT(1, mgr.getSubscriberCount());
+    TEST_ASSERT_EQUAL_UINT(2000, mgr.getSubscribers()[0].added_at);
+
+    // Fill up to 5 subscribers
+    TEST_ASSERT_TRUE(mgr.addOrUpdateSubscriber("https://ntfy.sh/sub2", 1100));
+    TEST_ASSERT_TRUE(mgr.addOrUpdateSubscriber("https://ntfy.sh/sub3", 1200));
+    TEST_ASSERT_TRUE(mgr.addOrUpdateSubscriber("https://ntfy.sh/sub4", 1300));
+    TEST_ASSERT_TRUE(mgr.addOrUpdateSubscriber("https://ntfy.sh/sub5", 1400));
+    TEST_ASSERT_EQUAL_UINT(5, mgr.getSubscriberCount());
+
+    // Add 6th subscriber -> evicts oldest (sub2 with timestamp 1100)
+    TEST_ASSERT_TRUE(mgr.addOrUpdateSubscriber("https://ntfy.sh/sub6", 3000));
+    TEST_ASSERT_EQUAL_UINT(5, mgr.getSubscriberCount());
+
+    bool foundSub2 = false;
+    bool foundSub6 = false;
+    for (const auto& s : mgr.getSubscribers()) {
+        if (s.endpoint == "https://ntfy.sh/sub2") foundSub2 = true;
+        if (s.endpoint == "https://ntfy.sh/sub6") foundSub6 = true;
+    }
+    TEST_ASSERT_FALSE(foundSub2);
+    TEST_ASSERT_TRUE(foundSub6);
+}
+
+void testPushSubscriberManager_JsonFormat() {
+    auto& mgr = PushSubscriberManager::getInstance();
+    mgr.clearSubscribers();
+    mgr.addOrUpdateSubscriber("https://ntfy.sh/upqWunC0oivigx?up=1", 1784730000);
+
+    String jsonStr = mgr.getSubscribersJson();
+    TEST_ASSERT_TRUE(jsonStr.indexOf("\"topic\":\"moni-") >= 0);
+    TEST_ASSERT_TRUE(jsonStr.indexOf("\"endpoint\":\"https://ntfy.sh/upqWunC0oivigx?up=1\"") >= 0);
+    TEST_ASSERT_TRUE(jsonStr.indexOf("\"added_at\":1784730000") >= 0);
+}
+

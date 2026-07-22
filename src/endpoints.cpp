@@ -1,3 +1,4 @@
+#include "PushSubscriberManager.h"
 #include "endpoints.h"
 #include "actuators/RelayManager.h"
 #include "configFile.h"
@@ -1073,3 +1074,47 @@ void handleApiAdminPassword() {
 
   server.send(200, "text/plain", "Admin password updated");
 }
+
+void handleNotifySubscribers() {
+  String json = PushSubscriberManager::getInstance().getSubscribersJson();
+  server.send(200, "application/json", json);
+}
+
+void handleNotifySubscribe() {
+  if (!server.hasArg("plain")) {
+    server.send(400, "application/json", "{\"status\":\"error\",\"message\":\"Missing body\"}");
+    return;
+  }
+
+  String bodyStr = server.arg("plain");
+  JsonDocument doc;
+  DeserializationError err = deserializeJson(doc, bodyStr);
+  if (err) {
+    server.send(400, "application/json", "{\"status\":\"error\",\"message\":\"Invalid JSON\"}");
+    return;
+  }
+
+  const char* endpoint = doc["endpoint"];
+  if (!endpoint || strlen(endpoint) == 0) {
+    server.send(400, "application/json", "{\"status\":\"error\",\"message\":\"Missing endpoint\"}");
+    return;
+  }
+
+  String epStr(endpoint);
+  if (!PushSubscriberManager::isValidEndpointUrl(epStr)) {
+    server.send(400, "application/json", "{\"status\":\"error\",\"message\":\"Invalid endpoint URL\"}");
+    return;
+  }
+
+  PushSubscriberManager::getInstance().addOrUpdateSubscriber(epStr);
+  size_t count = PushSubscriberManager::getInstance().getSubscriberCount();
+
+  JsonDocument res;
+  res["status"] = "ok";
+  res["total_subscribers"] = count;
+
+  String resStr;
+  serializeJson(res, resStr);
+  server.send(200, "application/json", resStr);
+}
+

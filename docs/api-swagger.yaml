@@ -630,6 +630,91 @@ paths:
         '500':
           description: Error al persistir la nueva contraseña
 
+  /api/notify/subscribers:
+    get:
+      tags:
+        - Notificaciones Push
+      summary: Consultar lista de suscriptores Push y topic del dispositivo
+      description: Devuelve el topic único `moni-{MAC}` y la lista actual de endpoints UnifiedPush almacenados.
+      operationId: getNotifySubscribers
+      responses:
+        '200':
+          description: Lista de suscriptores obtenida con éxito
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  topic:
+                    type: string
+                  subscribers:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        endpoint:
+                          type: string
+                        added_at:
+                          type: integer
+              example:
+                topic: "moni-004B12EE1FF4"
+                subscribers:
+                  - endpoint: "https://ntfy.sh/upqWunC0oivigx?up=1"
+                    added_at: 1784730000
+
+  /api/notify/subscribe:
+    post:
+      tags:
+        - Notificaciones Push
+      summary: Registrar o actualizar endpoint Push de la app Android
+      description: Flujo de registro invertido donde la app Android notifica al ESP32 su endpoint de UnifiedPush.
+      operationId: postNotifySubscribe
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - endpoint
+              properties:
+                endpoint:
+                  type: string
+                instance:
+                  type: string
+            example:
+              endpoint: "https://ntfy.sh/upqWunC0oivigx?up=1"
+              instance: "moni-004B12EE1FF4"
+      responses:
+        '200':
+          description: Endpoint registrado/actualizado exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  total_subscribers:
+                    type: integer
+              example:
+                status: "ok"
+                total_subscribers: 1
+        '400':
+          description: Endpoint inválido o malformado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  message:
+                    type: string
+              example:
+                status: "error"
+                message: "Invalid endpoint URL"
+
   /wifi:
     get:
       tags:
