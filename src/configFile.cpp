@@ -87,6 +87,12 @@ void createConfigFile() {
     config["send_interval_ms"] = 30000;
     config["grafana_ping_url"] = "http://192.168.1.1/ping";  // URL for connectivity test
 
+    // InfluxDB v2 / Grafana connection (editable from config page)
+    // Use http:// for local servers — InfluxDB v2 supports plain HTTP on port 8086
+    // and it avoids SSL heap overhead on ESP32. Change to https:// if needed.
+    config["grafana_url"]   = "http://10.147.18.204:8086/api/v2/write?orgID=823f664f6414d945&bucket=85dcae6a0cfeba70&precision=ns";
+    config["grafana_token"] = "Token zeXlRVJPK23u44M1rqD4jp2WYvg25I54BbYMfVizIEYZv3CHo_L0hVtISaJyizTq_v3OrcdO3HkVCAw5IEnVFg==";
+
     if (serializeJsonPretty(config, file) == 0) {
       DBG_ERROR("Write JSON failed\n");
     } else {
@@ -229,6 +235,16 @@ JsonDocument loadConfig() {
       rs485["baudrate"] = 9600;
       rs485["raw_send_enabled"] = false;
 
+      configModified = true;
+  }
+
+  // Automatic migration: add grafana_url / grafana_token if missing
+  if (doc["grafana_url"].isNull() || doc["grafana_token"].isNull()) {
+      DBG_INFO("Migrating: adding Grafana URL/token\n");
+      if (doc["grafana_url"].isNull())
+          doc["grafana_url"] = "http://10.147.18.204:8086/api/v2/write?orgID=823f664f6414d945&bucket=85dcae6a0cfeba70&precision=ns";
+      if (doc["grafana_token"].isNull())
+          doc["grafana_token"] = "Token zeXlRVJPK23u44M1rqD4jp2WYvg25I54BbYMfVizIEYZv3CHo_L0hVtISaJyizTq_v3OrcdO3HkVCAw5IEnVFg==";
       configModified = true;
   }
 

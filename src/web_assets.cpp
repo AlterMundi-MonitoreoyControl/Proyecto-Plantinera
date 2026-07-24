@@ -948,6 +948,30 @@ const char *config_html = R"=====(<!DOCTYPE html>
                 </div>
             </div>
 
+            <!-- Grafana / InfluxDB Section -->
+            <div class="section">
+                <h2>📡 Grafana / InfluxDB</h2>
+                <div class="info-text" style="background:#e3f2fd;padding:10px;border-radius:4px;margin-bottom:15px;">
+                    URL y token del servidor InfluxDB v2. Se envían datos en formato line-protocol.
+                    El token debe incluir el prefijo <code>Token </code> (con espacio).
+                </div>
+                <div class="form-group">
+                    <label for="grafana_url">URL de escritura (write endpoint)</label>
+                    <input type="text" id="grafana_url" name="grafana_url"
+                        placeholder="https://host:8086/api/v2/write?orgID=...&bucket=...&precision=ns">
+                    <small style="color:var(--gray-medium);">Incluye orgID, bucket y precision=ns</small>
+                </div>
+                <div class="form-group">
+                    <label for="grafana_token">Token de autorización</label>
+                    <div class="pwd-wrap">
+                        <input type="password" id="grafana_token" name="grafana_token"
+                            placeholder="Token xxxxxxxxxxxx...">
+                        <button type="button" class="pwd-toggle" data-target="grafana_token" aria-label="Mostrar token">Ver</button>
+                    </div>
+                    <small style="color:var(--gray-medium);">Formato: <code>Token &lt;tu_token&gt;</code></small>
+                </div>
+            </div>
+
             <div class="message" id="message"></div>
 
             <button type="submit" class="btn">Guardar Configuración</button>
@@ -1231,6 +1255,12 @@ function populateForm(config) {
     document.getElementById('grafana_ping_url').value = config.grafana_ping_url || 'http://192.168.1.1/ping';
     document.getElementById('espnow_channel').value = config.espnow_channel || 1;
     document.getElementById('send_interval_ms').value = config.send_interval_ms || 30000;
+
+    // Grafana / InfluxDB
+    const grafanaUrlEl   = document.getElementById('grafana_url');
+    const grafanaTokenEl = document.getElementById('grafana_token');
+    if (grafanaUrlEl)   grafanaUrlEl.value   = config.grafana_url   || '';
+    if (grafanaTokenEl) grafanaTokenEl.value = config.grafana_token || '';
 
     // Toggle ESP-NOW config visibility
     toggleESPNowConfig();
@@ -1824,6 +1854,12 @@ function buildConfigFromForm() {
     config.grafana_ping_url = document.getElementById('grafana_ping_url').value;
     config.espnow_channel = parseInt(document.getElementById('espnow_channel').value);
     config.send_interval_ms = parseInt(document.getElementById('send_interval_ms').value);
+
+    // Grafana / InfluxDB
+    const grafanaUrlVal   = document.getElementById('grafana_url')   ? document.getElementById('grafana_url').value.trim()   : '';
+    const grafanaTokenVal = document.getElementById('grafana_token') ? document.getElementById('grafana_token').value.trim() : '';
+    if (grafanaUrlVal)   config.grafana_url   = grafanaUrlVal;
+    if (grafanaTokenVal) config.grafana_token = grafanaTokenVal;
 
     // Sensors
     if (Array.isArray(config.sensors)) {

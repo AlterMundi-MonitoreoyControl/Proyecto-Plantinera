@@ -209,6 +209,14 @@ void setup() {
   // Load configuration ONCE for all modules
   JsonDocument config = loadConfig();
 
+  // Runtime Grafana connection — read from config (editable via web UI)
+  // Falls back to compile-time constants if not set
+  grafanaUrl   = config["grafana_url"]   | String(URL);
+  grafanaToken = config["grafana_token"] | String(TOKEN_GRAFANA);
+  if (grafanaUrl.isEmpty())   grafanaUrl   = String(URL);
+  if (grafanaToken.isEmpty()) grafanaToken = String(TOKEN_GRAFANA);
+  DBG_INFO("[Grafana] URL: %s\n", grafanaUrl.c_str());
+
   IF_VERBOSE({
     DBG_INFOLN("\n[INFO] Config loaded:");
     String configOutput;

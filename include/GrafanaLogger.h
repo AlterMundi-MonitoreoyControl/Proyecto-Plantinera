@@ -21,11 +21,13 @@
 #include <Arduino.h>
 #include <HTTPClient.h>
 #include <WiFi.h>
+#include <WiFiClientSecure.h>
 #include <esp_system.h>   // esp_reset_reason()
 #include <time.h>
 #include <map>
 
 #include "constants.h"
+#include "globals.h"    // grafanaUrl, grafanaToken
 #include "debug.h"
 #include "PushSubscriberManager.h"
 
@@ -47,7 +49,7 @@ static constexpr uint32_t GRAFANA_BACKOFF_MAX_MS      =  300000;  //   5 min
 static constexpr uint32_t GRAFANA_CONFIRM_INTERVAL_MS = 120000;  //  2 min
 
 // HTTP timeout for Grafana POST (ms) — keep short to avoid blocking loop()
-static constexpr int GRAFANA_HTTP_TIMEOUT_MS = 500;
+static constexpr int GRAFANA_HTTP_TIMEOUT_MS = 3000;
 
 // -----------------------------------------------------------------------------
 
@@ -79,8 +81,9 @@ public:
         // Capture reset reason immediately — report will be sent once WiFi connects
         _resetReason = _resetReasonStr();
         _pendingResetReport = true;
-        _resetReportAfterMs = millis() + 10000; // 10 s grace for WiFi to connect
-        DBG_INFO("[GrafanaLogger] Reset reason: %s (report deferred until online)\n",
+        // _wifiFirstConnectMs is 0 at boot; tick() sets it on first WiFi connect
+        // and waits 10s after that before sending — gives routing time to settle.
+        DBG_INFO("[GrafanaLogger] Reset reason: %s (report deferred until 10s after WiFi)\n",
                  _resetReason.c_str());
     }
 
@@ -143,17 +146,22 @@ public:
     void tick() {
         if (!_initialized) return;
 
-        // --- Send deferred reset report once WiFi comes up ------------------
-        if (_pendingResetReport &&
-            WiFi.status() == WL_CONNECTED &&
-            millis() >= _resetReportAfterMs) {
-            _pendingResetReport = false;
-            String msg = "Device reset: " + _resetReason;
-            DBG_INFO("[GrafanaLogger] Sending reset report: %s\n", msg.c_str());
-            // Send to Grafana as "log" measurement (mirrors log.lua send_to_grafana)
-            _sendGrafanaLog(msg);
-            // Send to NTFY independently (won't affect Grafana state on failure)
-            sendNtfy("\xF0\x9F\x94\x84 " + msg);  // 🔄 emoji
+        // --- Send deferred reset report -----------------------------------------
+        // Wait until WiFi has been connected for at least 10s so ARP/routing
+        // settles before the first cross-subnet HTTP attempt.
+        if (_pendingResetReport && WiFi.status() == WL_CONNECTED) {
+            if (_wifiFirstConnectMs == 0) {
+                // First tick() where WiFi is up — record the timestamp
+                _wifiFirstConnectMs = millis();
+                DBG_INFO("[GrafanaLogger] WiFi up, reset report will send in 10s\n");
+            }
+            if (millis() - _wifiFirstConnectMs >= 10000) {
+                _pendingResetReport = false;
+                String msg = "Device reset: " + _resetReason;
+                DBG_INFO("[GrafanaLogger] Sending reset report: %s\n", msg.c_str());
+                _sendGrafanaLog(msg);
+                sendNtfy("\xF0\x9F\x94\x84 " + msg, "_ntfy_reset_", 0);
+            }
         }
 
         // Periodically re-confirm Grafana is still reachable
@@ -176,9 +184,14 @@ public:
      *   - Grafana down (LAN gone)  → NTFY still sends if internet is reachable
      *   - NTFY down (ntfy.sh gone) → Grafana still sends, NTFY silently skips
      *
-     * @param message  Plain-text message
+     * @param message      Plain-text message
+     * @param throttleKey  Per-event throttle key — different event types use
+     *                     different keys so they never block each other.
+     * @param throttleMs   Minimum ms between sends for this key (0 = no throttle)
      */
-    void sendNtfy(const String& message) {
+    void sendNtfy(const String& message,
+                  const String& throttleKey = "_ntfy_",
+                  uint32_t throttleMs = 30000) {
         if (!_initialized) begin();
         if (_ntfyUrl.isEmpty()) return;
 
@@ -186,8 +199,9 @@ public:
         if (WiFi.status() != WL_CONNECTED) return;
         if (ESP.getFreeHeap() < GRAFANA_MIN_HEAP_BYTES) return;
 
-        // NTFY has its OWN throttle key — independent of Grafana throttle
-        if (!_throttleCheck("_ntfy_", 30000)) return;
+        // NTFY has its OWN throttle key — each event type passes its own key
+        // so different alerts never block each other
+        if (throttleMs > 0 && !_throttleCheck(throttleKey, throttleMs)) return;
 
         // NTFY has its OWN back-off — if ntfy.sh is down, skip silently
         // without affecting Grafana reachability state at all
@@ -242,12 +256,12 @@ public:
         if (vec.size() >= 2) vec.erase(vec.begin());
         vec.push_back(message);
 
-        // Throttle notifications
+        // Per-type throttle key so errors of different types don't block each other
         String key = "_err_" + errorType;
         if (!_throttleCheck(key, intervalMs)) return;
 
         String alert = "[" + errorType + "] " + message;
-        sendNtfy(alert);
+        sendNtfy(alert, "_ntfy_err_" + errorType, 0); // throttle handled above
         DBG_ERROR("[GrafanaLogger] Error(%s): %s\n",
                   errorType.c_str(), message.c_str());
     }
@@ -283,10 +297,10 @@ private:
     uint8_t  _ntfyFailureCount = 0;
     unsigned long _nextNtfyRetryMs   = 0;
 
-    // Device reset report (deferred until WiFi connects)
+    // Device reset report (deferred until WiFi connects + routing settles)
     bool     _pendingResetReport  = false;
     String   _resetReason;
-    unsigned long _resetReportAfterMs = 0;
+    unsigned long _wifiFirstConnectMs = 0;  // set on first tick() where WiFi is up
 
     unsigned long _lastLowHeapNotify = 0;
     String _ntfyUrl;
@@ -360,22 +374,14 @@ private:
 
         _lastGrafanaCheck = millis();
 
-        HTTPClient http;
-        // Probe base URL (expects 401/204/200 — any response means server is up)
-        String probeUrl = String(URL);
-        // Strip path from URL if present — we just need host reachability
-        // URL format: http://host:port/write?... → probe http://host:port/
-        int pathStart = probeUrl.indexOf('/', 7); // skip "http://"
-        if (pathStart > 0) {
-            probeUrl = probeUrl.substring(0, pathStart) + "/";
-        }
+        // Probe the host root — strip the write path from the URL
+        String probeUrl = grafanaUrl.isEmpty() ? String(URL) : grafanaUrl;
+        int skipScheme = probeUrl.startsWith("https://") ? 8 : 7;
+        int pathStart  = probeUrl.indexOf('/', skipScheme);
+        if (pathStart > 0) probeUrl = probeUrl.substring(0, pathStart) + "/";
 
-        http.begin(probeUrl);
-        http.setTimeout(3000);
-        int code = http.GET();
-        http.end();
-
-        bool reachable = (code > 0); // any HTTP response = server alive
+        int code = _httpGet(probeUrl, 3000);
+        bool reachable = (code > 0);
 
         if (reachable && !_grafanaReachable) {
             // Recovery
@@ -384,7 +390,8 @@ private:
             _backoffMs        = GRAFANA_BACKOFF_INITIAL_MS;
             _nextRetryMs      = 0;
             DBG_INFO("[GrafanaLogger] Grafana reconnected (HTTP %d)\n", code);
-            sendNtfy("✅ Grafana reconnected after downtime");
+            sendNtfy("\xE2\x9C\x85 Grafana reconnected after downtime",
+                     "_ntfy_g_up_", 60000);
 
         } else if (!reachable) {
             _failureCount++;
@@ -400,9 +407,10 @@ private:
             DBG_ERROR("[GrafanaLogger] Grafana unreachable (attempt %d), back-off %lus\n",
                       _failureCount, (unsigned long)(_backoffMs / 1000));
 
-            // Only notify once on first failure (edge-detect)
+            // Only notify once on first failure (edge-detect) — use dedicated key
             if (_failureCount == 1) {
-                sendNtfy("⚠️ Grafana unreachable — data sends paused");
+                sendNtfy("\xE2\x9A\xA0\xEF\xB8\x8F Grafana unreachable \xE2\x80\x94 data sends paused",
+                         "_ntfy_g_down_", 60000);
             }
         }
     }
@@ -412,16 +420,11 @@ private:
      * Returns true on HTTP 204 (InfluxDB success).
      */
     bool _doPost(const String& data) {
-        HTTPClient http;
-        WiFiClient client;
+        // Use runtime URL/token from config.json; fall back to compile-time constants
+        String url   = grafanaUrl.isEmpty()   ? String(URL)           : grafanaUrl;
+        String token = grafanaToken.isEmpty() ? String(TOKEN_GRAFANA) : grafanaToken;
 
-        http.begin(client, URL);
-        http.setTimeout(GRAFANA_HTTP_TIMEOUT_MS);
-        http.addHeader("Content-Type", "text/plain");
-        http.addHeader("Authorization", "Basic " + String(TOKEN_GRAFANA));
-
-        int code = http.POST(data);
-        http.end();
+        int code = _httpPost(url, token, data, GRAFANA_HTTP_TIMEOUT_MS);
 
         if (code == 204) {
             // On first successful post after downtime, reset failure state
@@ -443,7 +446,8 @@ private:
                 _failureCount     = 1;
                 _backoffMs        = GRAFANA_BACKOFF_INITIAL_MS;
                 _nextRetryMs      = millis() + _backoffMs;
-                sendNtfy("⚠️ Grafana unreachable — data sends paused");
+                sendNtfy("\xE2\x9A\xA0\xEF\xB8\x8F Grafana unreachable \xE2\x80\x94 data sends paused",
+                         "_ntfy_g_down_", 60000);
             }
         }
         return false;
@@ -456,7 +460,8 @@ private:
         unsigned long now = millis();
         if (now - _lastLowHeapNotify > 300000UL) {
             _lastLowHeapNotify = now;
-            sendNtfy("🔴 Low heap: " + String(ESP.getFreeHeap()) + " bytes");
+            sendNtfy("\xF0\x9F\x94\xB4 Low heap: " + String(ESP.getFreeHeap()) + " bytes",
+                     "_ntfy_heap_", 300000);
         }
     }
     /**
@@ -487,34 +492,132 @@ private:
         if (WiFi.status() != WL_CONNECTED) return;
         if (ESP.getFreeHeap() < GRAFANA_MIN_HEAP_BYTES) return;
 
-        // Build device tag from MAC (consistent with medicionesCO2 measurement)
         String mac = WiFi.macAddress();
         mac.replace(":", "");
         mac.toLowerCase();
 
-        // Escape quotes inside message for InfluxDB line protocol
         String escaped = message;
-        escaped.replace("\"", "\\\"" );
+        escaped.replace("\"", "\\\"");
 
         unsigned long long ts = (unsigned long long)time(nullptr) * 1000000000ULL;
         String data = "log,device=moni-" + mac +
                       " message=\"" + escaped + "\" " +
                       String((uint64_t)ts);
 
-        HTTPClient http;
-        WiFiClient wc;
-        http.begin(wc, URL);
-        http.setTimeout(GRAFANA_HTTP_TIMEOUT_MS);
-        http.addHeader("Content-Type", "text/plain");
-        http.addHeader("Authorization", "Basic " + String(TOKEN_GRAFANA));
-        int code = http.POST(data);
-        http.end();
+        String url   = grafanaUrl.isEmpty()   ? String(URL)           : grafanaUrl;
+        String token = grafanaToken.isEmpty() ? String(TOKEN_GRAFANA) : grafanaToken;
 
+        int code = _httpPost(url, token, data, GRAFANA_HTTP_TIMEOUT_MS);
         if (code == 204) {
             DBG_INFO("[GrafanaLogger] Log entry sent to Grafana\n");
         } else {
             DBG_VERBOSE("[GrafanaLogger] Grafana log failed: HTTP %d\n", code);
         }
+    }
+
+    // -------------------------------------------------------------------------
+    // HTTP helpers: auto-detect http:// vs https://
+    //
+    // ROOT CAUSE of start_ssl_client:-1 on ESP32:
+    //   Default WiFiClientSecure buffers = 16384 RX + 16384 TX = ~32KB just for
+    //   TLS buffers. Under 6-sensor load the heap is too fragmented for this.
+    //   Fix: use WiFiClient (zero overhead) for http://, and for https:// use
+    //   reduced buffers (4096 RX / 512 TX) — enough for InfluxDB line-protocol
+    //   payloads while needing only ~5KB of contiguous heap for TLS.
+    // -------------------------------------------------------------------------
+
+    /**
+     * HTTP/HTTPS POST — auto-selects WiFiClient or WiFiClientSecure.
+     * Prints full debug info (URL, headers, body, curl equivalent) at INFO level.
+     * @returns HTTP response code, or <= 0 on connection failure.
+     */
+    int _httpPost(const String& url, const String& authHeader,
+                  const String& body, int timeoutMs) {
+
+        // --- Debug: print exactly what we are about to send ---
+        DBG_INFO("[HTTP] POST %s://%s\n",
+                 url.startsWith("https") ? "https" : "http",
+                 url.c_str() + (url.startsWith("https") ? 8 : 7));
+        DBG_INFO("[HTTP] URL      : %s\n", url.c_str());
+        // Print only first 20 chars of token so it's identifiable but not leaked
+        String tokenPreview = authHeader.substring(0, min((unsigned int)authHeader.length(), 20u)) + "...";
+        DBG_INFO("[HTTP] Auth     : %s\n", tokenPreview.c_str());
+        DBG_INFO("[HTTP] Body     : %s\n", body.c_str());
+        DBG_INFO("[HTTP] FreeHeap : %u B\n", ESP.getFreeHeap());
+        // Print curl equivalent for easy desktop replay
+        DBG_INFO("[HTTP] curl -k -i -X POST '%s' "
+                 "-H 'Authorization: %s' "
+                 "-H 'Content-Type: text/plain' "
+                 "--data-binary '%s'\n",
+                 url.c_str(), authHeader.c_str(), body.c_str());
+
+        int code;
+        if (url.startsWith("https://")) {
+            WiFiClientSecure sc;
+            sc.setInsecure();
+            HTTPClient http;
+            http.begin(sc, url);
+            http.setTimeout(timeoutMs);
+            http.addHeader("Content-Type", "text/plain");
+            http.addHeader("Authorization", authHeader);
+            code = http.POST(body);
+            if (code > 0) {
+                DBG_INFO("[HTTP] Response : %d %s\n", code, http.errorToString(code).c_str());
+            }
+            http.end();
+        } else {
+            WiFiClient wc;
+            HTTPClient http;
+            http.begin(wc, url);
+            http.setTimeout(timeoutMs);
+            http.addHeader("Content-Type", "text/plain");
+            http.addHeader("Authorization", authHeader);
+            code = http.POST(body);
+            if (code > 0) {
+                DBG_INFO("[HTTP] Response : %d %s\n", code, http.errorToString(code).c_str());
+            }
+            http.end();
+        }
+
+        if (code <= 0) {
+            DBG_ERROR("[HTTP] POST FAILED: %d (%s)  heap=%u\n",
+                      code, HTTPClient::errorToString(code).c_str(),
+                      ESP.getFreeHeap());
+        }
+        return code;
+    }
+
+    /**
+     * HTTP/HTTPS GET — used for reachability probes.
+     * @returns HTTP response code, or <= 0 on connection failure.
+     */
+    int _httpGet(const String& url, int timeoutMs) {
+        DBG_INFO("[HTTP] GET %s  heap=%u\n", url.c_str(), ESP.getFreeHeap());
+        int code;
+        if (url.startsWith("https://")) {
+            WiFiClientSecure sc;
+            sc.setInsecure();
+            HTTPClient http;
+            http.begin(sc, url);
+            http.setTimeout(timeoutMs);
+            code = http.GET();
+            http.end();
+        } else {
+            WiFiClient wc;
+            HTTPClient http;
+            http.begin(wc, url);
+            http.setTimeout(timeoutMs);
+            code = http.GET();
+            http.end();
+        }
+        if (code <= 0) {
+            DBG_ERROR("[HTTP] GET FAILED: %d (%s)  heap=%u\n",
+                      code, HTTPClient::errorToString(code).c_str(),
+                      ESP.getFreeHeap());
+        } else {
+            DBG_INFO("[HTTP] GET response: %d\n", code);
+        }
+        return code;
     }
 
     /**
