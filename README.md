@@ -78,6 +78,9 @@ pio run -e esp32dev_multi --target upload
 | `esp32dev_espnow` | Todos | Mesh ESP-NOW |
 | `esp32dev_bme280` | BME280 | — |
 | `esp32dev_capacitive` | Capacitive | — |
+| `esp32s3_multi` | Todos (**ESP32-S3**) | RS485, ESP-NOW, debug, flash 16 MB |
+
+> **ESP32-S3:** ver [`docs/PORT_ESP32-S3.md`](docs/PORT_ESP32-S3.md) (mapeo de pines, flasheo, pendientes).
 
 </details>
 

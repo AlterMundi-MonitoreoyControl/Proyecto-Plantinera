@@ -18,3 +18,5 @@ compile_commands.json
 # build_reports/
 tools/venv
 tools/__pycache__
+# HardWare venv
+HardWare/.venv/

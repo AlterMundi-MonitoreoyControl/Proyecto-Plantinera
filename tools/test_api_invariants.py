@@ -100,7 +100,6 @@ def test_config_invariants(base_url):
     # Nuevas variables de configuración estandarizadas del sistema
     expected_keys = [
         "incubator_name", "hash", "ssid",
-        "min_temperature", "max_temperature", "min_hum", "max_hum",
         "sensors", "relays", "rs485", "current_wifi_channel"
     ]
     

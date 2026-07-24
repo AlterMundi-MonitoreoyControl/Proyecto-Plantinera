@@ -1,3 +1,4 @@
+#include "PushSubscriberManager.h"
 #include "actuators/RelayManager.h"
 #include "configFile.h"
 #include "constants.h"
@@ -280,13 +281,22 @@ void setup() {
   // Initialize Relays
   DBG_INFOLN("\n[INFO] Initializing Relays...");
   relayMgr.loadFromConfig(config);
-  DBG_INFO("[OK] %d relays configured\n", relayMgr.getRelays().size());
+  DBG_INFO("[OK] %d relays 2CH configured\n", relayMgr.getRelays().size());
   for (auto *r : relayMgr.getRelays()) {
     if (r) {
       r->init();
-      // Register each individual relay channel as an actuator in mediator
       mediator.registerActuator(r->getChannel(0));
       mediator.registerActuator(r->getChannel(1));
+    }
+  }
+
+  DBG_INFO("[OK] %d relays 4CH configured\n", relayMgr.getRelays4ch().size());
+  for (auto *r : relayMgr.getRelays4ch()) {
+    if (r) {
+      r->init();
+      for (uint8_t ch = 0; ch < 4; ch++) {
+        mediator.registerActuator(r->getChannel(ch));
+      }
     }
   }
 
@@ -340,6 +350,10 @@ void setup() {
   server.on("/rules-editor",     HTTP_GET,  handleRulesEditor);
   server.on("/api/admin/info", HTTP_GET, handleApiAdminInfo);
   server.on("/api/admin/password", HTTP_POST, handleApiAdminPassword);
+
+  // UnifiedPush endpoints
+  server.on("/api/notify/subscribers", HTTP_GET, handleNotifySubscribers);
+  server.on("/api/notify/subscribe", HTTP_POST, handleNotifySubscribe);
 
   server.on("/style.css", HTTP_GET, handleStyle);
   server.on("/config.js", HTTP_GET, handleConfigJs);
@@ -461,7 +475,7 @@ void setup() {
 
   DBG_INFOLN("\n=== SYSTEM READY ===");
   DBG_INFO("  AP: %s\n", wifiManager.getAPSSID().c_str());
-  DBG_INFOLN("  Config: http://192.168.16.10");
+  DBG_INFOLN("  Config: http://192.168.4.1");
   DBG_INFOLN("  Data:   http://<IP>/data\n");
 }
 
@@ -634,11 +648,12 @@ void loop() {
 #endif
 #endif
 
-    // Report Relays to Grafana
+    // Report 2CH Relays to Grafana
     for (auto *r : relayMgr.getRelays()) {
       if (r && r->isActive()) {
         r->syncState();
         r->syncInputs(mediator);
+        r->syncOutputs(mediator);   // relay coil states as sensor readings
 
         if (r->isActive()) {
           String data = r->getGrafanaString();
@@ -647,7 +662,26 @@ void loop() {
             id = "relay_" + String(r->getAddress());
           id.replace(" ", "_");
           sendDataGrafana(data.c_str(), id.c_str());
-          server.handleClient(); yield(); // yield between relay sends too
+          server.handleClient(); yield();
+        }
+      }
+    }
+
+    // Report 4CH Relays to Grafana
+    for (auto *r : relayMgr.getRelays4ch()) {
+      if (r && r->isActive()) {
+        r->syncState();
+        r->syncInputs(mediator);
+        r->syncOutputs(mediator);   // relay coil states as sensor readings
+
+        if (r->isActive()) {
+          String data = r->getGrafanaString();
+          String id = r->getAlias();
+          if (id.length() == 0)
+            id = "relay4_" + String(r->getAddress());
+          id.replace(" ", "_");
+          sendDataGrafana(data.c_str(), id.c_str());
+          server.handleClient(); yield();
         }
       }
     }

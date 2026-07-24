@@ -1,3 +1,4 @@
+#include "PushSubscriberManager.h"
 #include "endpoints.h"
 #include "actuators/RelayManager.h"
 #include "configFile.h"
@@ -324,41 +325,106 @@ void handleMediciones() {
 #endif
   DBG_INFO("[Endpoint] entradas digitales ....... " );
 
-  // Exponer Entradas Digitales de los reles Modbus como sensores visuales
+  // Entradas y salidas de módulos 2CH
   for (auto *r : relayMgr.getRelays()) {
     if (!r) continue;
-    DBG_INFO("[Endpoint] Syncing relay addr=%d inputs is active= %i\n", r->getAddress(), r->isActive() );
+    DBG_INFO("[Endpoint] Syncing relay addr=%d inputs is active= %i\n", r->getAddress(), r->isActive());
 
     if (r->isActive()) {
       r->syncState();
       r->syncInputs(mediator);
+      r->syncOutputs(mediator);  // coil states as sensor readings
     }
 
     JsonObject sensorObj = sensors.add<JsonObject>();
-    sensorObj["type"] = "Entradas Digitales";
+    sensorObj["type"] = "Relé Modbus 2CH";
     sensorObj["id"] = "modbus_relay_" + String(r->getAddress());
     sensorObj["icon"] = "🔌";
     sensorObj["error"] = !r->isActive();
 
     JsonArray readings = sensorObj["readings"].to<JsonArray>();
 
+    // Outputs (coil states)
+    static const SensorVariable outVars2[2] = {
+        SensorVariable::RELAY_OUT_1, SensorVariable::RELAY_OUT_2
+    };
+    for (int i = 0; i < 2; i++) {
+        JsonObject out = readings.add<JsonObject>();
+        out["label"]      = "OUT " + String(i+1);
+        out["value"]      = String(r->getState(i) ? 1 : 0);
+        out["unit"]       = "";
+        out["status"]     = r->isActive() ? (r->getState(i) ? "ok" : "warn") : "warn";
+        out["key_device"] = (uint8_t)(ESP.getEfuseMac() & 0xFF);
+        out["key_sensor"] = r->getAddress();
+        out["key_var"]    = (uint8_t)outVars2[i];
+    }
+
+    // Inputs (optocoupler)
     JsonObject in1 = readings.add<JsonObject>();
-    in1["label"] = "IN 1";
-    in1["value"] = String(r->getInputState(0) ? 1 : 0);
-    in1["unit"]  = "";
-    in1["status"]= r->isActive() ? "ok" : "warn";
+    in1["label"] = "IN 1"; in1["value"] = String(r->getInputState(0) ? 1 : 0);
+    in1["unit"] = ""; in1["status"] = r->isActive() ? "ok" : "warn";
     in1["key_device"] = (uint8_t)(ESP.getEfuseMac() & 0xFF);
     in1["key_sensor"] = r->getAddress();
     in1["key_var"] = (uint8_t)SensorVariable::DIGITAL_IN_1;
 
     JsonObject in2 = readings.add<JsonObject>();
-    in2["label"] = "IN 2";
-    in2["value"] = String(r->getInputState(1) ? 1 : 0);
-    in2["unit"]  = "";
-    in2["status"]= r->isActive() ? "ok" : "warn";
+    in2["label"] = "IN 2"; in2["value"] = String(r->getInputState(1) ? 1 : 0);
+    in2["unit"] = ""; in2["status"] = r->isActive() ? "ok" : "warn";
     in2["key_device"] = (uint8_t)(ESP.getEfuseMac() & 0xFF);
     in2["key_sensor"] = r->getAddress();
     in2["key_var"] = (uint8_t)SensorVariable::DIGITAL_IN_2;
+  }
+
+  // Entradas y salidas de módulos 4CH
+  for (auto *r : relayMgr.getRelays4ch()) {
+    if (!r) continue;
+    DBG_INFO("[Endpoint] Syncing relay4 addr=%d inputs is active= %i\n", r->getAddress(), r->isActive());
+
+    if (r->isActive()) {
+      r->syncState();
+      r->syncInputs(mediator);
+      r->syncOutputs(mediator);  // coil states as sensor readings
+    }
+
+    JsonObject sensorObj = sensors.add<JsonObject>();
+    sensorObj["type"] = "Relé Modbus 4CH";
+    sensorObj["id"] = "modbus_relay4_" + String(r->getAddress());
+    sensorObj["icon"] = "🔌";
+    sensorObj["error"] = !r->isActive();
+
+    JsonArray readings = sensorObj["readings"].to<JsonArray>();
+
+    // Outputs (coil states)
+    static const SensorVariable outVars4[4] = {
+        SensorVariable::RELAY_OUT_1, SensorVariable::RELAY_OUT_2,
+        SensorVariable::RELAY_OUT_3, SensorVariable::RELAY_OUT_4
+    };
+    for (int i = 0; i < 4; i++) {
+        JsonObject out = readings.add<JsonObject>();
+        out["label"]      = "OUT " + String(i+1);
+        out["value"]      = String(r->getState(i) ? 1 : 0);
+        out["unit"]       = "";
+        out["status"]     = r->isActive() ? (r->getState(i) ? "ok" : "warn") : "warn";
+        out["key_device"] = (uint8_t)(ESP.getEfuseMac() & 0xFF);
+        out["key_sensor"] = r->getAddress();
+        out["key_var"]    = (uint8_t)outVars4[i];
+    }
+
+    // Inputs (optocoupler)
+    static const SensorVariable inVars4[4] = {
+        SensorVariable::DIGITAL_IN_1, SensorVariable::DIGITAL_IN_2,
+        SensorVariable::DIGITAL_IN_3, SensorVariable::DIGITAL_IN_4
+    };
+    for (int i = 0; i < 4; i++) {
+        JsonObject inp = readings.add<JsonObject>();
+        inp["label"]      = "IN " + String(i+1);
+        inp["value"]      = String(r->getInputState(i) ? 1 : 0);
+        inp["unit"]       = "";
+        inp["status"]     = r->isActive() ? "ok" : "warn";
+        inp["key_device"] = (uint8_t)(ESP.getEfuseMac() & 0xFF);
+        inp["key_sensor"] = r->getAddress();
+        inp["key_var"]    = (uint8_t)inVars4[i];
+    }
   }
 
   // Legacy flat fields for the LibreAgro mobile app (kept alongside sensors[]).
@@ -514,6 +580,21 @@ void handleConfiguracion() {
   } else {
     doc["current_wifi_channel"] = 0;
   }
+
+  // Compat LibreAgro: la app valida config.relays[].config.address (int 1-247)
+  // en TODOS los relays. Los gpio guardan "pin" en vez de "address" → exponer
+  // address (= pin) para que el alta del hub no rechace el /config.
+  JsonArray relays = doc["relays"].as<JsonArray>();
+  for (JsonObject relay : relays) {
+    JsonObject cfg = relay["config"];
+    if (!cfg.isNull() && !cfg["address"].is<int>() && cfg["pin"].is<int>()) {
+      cfg["address"] = cfg["pin"].as<int>();
+    }
+  }
+
+  // Pines I2C por defecto del board (para mostrarlos en la UI del BME280/SCD30).
+  doc["i2c_sda"] = SDA;
+  doc["i2c_scl"] = SCL;
 
   String output;
   serializeJson(doc, output);
@@ -704,14 +785,28 @@ void handleRelayList() {
     }
   }
 
+  for (auto *r : relayMgr.getRelays4ch()) {
+    if (r) {
+      if (r->isActive()) r->syncState();
+      JsonDocument tempDoc;
+      deserializeJson(tempDoc, r->getStatusJSON());
+      arr.add(tempDoc);
+    }
+  }
+
   for (auto& g : relayMgr.getGpioRelays()) {
     if (g.actuator) {
       JsonObject obj = arr.add<JsonObject>();
       obj["type"] = "gpio";
       obj["address"] = g.pin;
       obj["alias"] = g.alias;
+      obj["active"] = true;
       JsonArray stateArr = obj["state"].to<JsonArray>();
       stateArr.add(g.actuator->getState());
+      stateArr.add(false);
+      JsonArray inputStateArr = obj["input_state"].to<JsonArray>();
+      inputStateArr.add(false);
+      inputStateArr.add(false);
     }
   }
 
@@ -732,9 +827,24 @@ void handleRelayToggle() {
 
   for (auto *r : relayMgr.getRelays()) {
     if (r->getAddress() == addr) {
+      if (ch < 0 || ch > 1) { server.send(400, "text/plain", "ch must be 0-1 for relay_2ch"); return; }
       ActuatorCommand cmd;
       cmd.actuatorId = r->getChannel(ch)->getId();
-      cmd.state = !r->getChannel(ch)->getState(); // Commuta el estado LÓGICO
+      cmd.state = !r->getChannel(ch)->getState();
+      cmd.durationMs = 0;
+      cmd.priority = 3;
+      mediator.onManualCommand(cmd);
+      server.send(200, "text/plain", "OK");
+      return;
+    }
+  }
+
+  for (auto *r : relayMgr.getRelays4ch()) {
+    if (r->getAddress() == addr) {
+      if (ch < 0 || ch > 3) { server.send(400, "text/plain", "ch must be 0-3 for relay_4ch"); return; }
+      ActuatorCommand cmd;
+      cmd.actuatorId = r->getChannel(ch)->getId();
+      cmd.state = !r->getChannel(ch)->getState();
       cmd.durationMs = 0;
       cmd.priority = 3;
       mediator.onManualCommand(cmd);
@@ -964,3 +1074,47 @@ void handleApiAdminPassword() {
 
   server.send(200, "text/plain", "Admin password updated");
 }
+
+void handleNotifySubscribers() {
+  String json = PushSubscriberManager::getInstance().getSubscribersJson();
+  server.send(200, "application/json", json);
+}
+
+void handleNotifySubscribe() {
+  if (!server.hasArg("plain")) {
+    server.send(400, "application/json", "{\"status\":\"error\",\"message\":\"Missing body\"}");
+    return;
+  }
+
+  String bodyStr = server.arg("plain");
+  JsonDocument doc;
+  DeserializationError err = deserializeJson(doc, bodyStr);
+  if (err) {
+    server.send(400, "application/json", "{\"status\":\"error\",\"message\":\"Invalid JSON\"}");
+    return;
+  }
+
+  const char* endpoint = doc["endpoint"];
+  if (!endpoint || strlen(endpoint) == 0) {
+    server.send(400, "application/json", "{\"status\":\"error\",\"message\":\"Missing endpoint\"}");
+    return;
+  }
+
+  String epStr(endpoint);
+  if (!PushSubscriberManager::isValidEndpointUrl(epStr)) {
+    server.send(400, "application/json", "{\"status\":\"error\",\"message\":\"Invalid endpoint URL\"}");
+    return;
+  }
+
+  PushSubscriberManager::getInstance().addOrUpdateSubscriber(epStr);
+  size_t count = PushSubscriberManager::getInstance().getSubscriberCount();
+
+  JsonDocument res;
+  res["status"] = "ok";
+  res["total_subscribers"] = count;
+
+  std::string resStr;
+  serializeJson(res, resStr);
+  server.send(200, "application/json", resStr.c_str());
+}
+

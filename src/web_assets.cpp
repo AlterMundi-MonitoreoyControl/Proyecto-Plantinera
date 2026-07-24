@@ -702,8 +702,12 @@ const char *data_html = R"=====(<!DOCTYPE html>
                 card.className = 'card';
                 card.style.borderLeftColor = '#0198fe';
 
+                const typeLabel = r.type === 'gpio' ? 'Relé GPIO'
+                                : r.type === 'relay_4ch' ? 'Relé Modbus 4CH'
+                                : 'Relé Modbus 2CH';
+
                 let html = `<div class='hdr'>
-                    <span class='type'>${r.type === 'gpio' ? 'Relé GPIO' : 'Relé Modbus'}</span>
+                    <span class='type'>${typeLabel}</span>
                     <span class='id'>${r.type === 'gpio' ? 'Pin: ' : 'Dir: '}${r.address}</span>
                 </div>
                 <div class='vals'>`;
@@ -714,13 +718,12 @@ const char *data_html = R"=====(<!DOCTYPE html>
                     </div>`;
                 }
 
-                // Outputs (Channels)
+                // Outputs (Channels) — clickable toggle
                 if (r.state) {
                     r.state.forEach((state, idx) => {
                         const status = state ? "ok" : "warn";
                         const label = state ? "ON" : "OFF";
-                        const chanLabel = r.type === 'gpio' ? 'Estado' : `Canal ${idx + 1}`;
-                        // Note: toggle function needs to be global or accessible
+                        const chanLabel = r.type === 'gpio' ? 'Estado' : `Salida ${idx + 1}`;
                         html += `<div class='val ${status}' style='cursor:pointer' 
                              onclick='toggle(${r.address}, ${idx})'>
                              <span>${chanLabel}</span><b>${label}</b>
@@ -728,7 +731,7 @@ const char *data_html = R"=====(<!DOCTYPE html>
                     });
                 }
 
-                // Inputs
+                // Inputs — read-only
                 if (r.input_state) {
                     r.input_state.forEach((state, idx) => {
                         const status = state ? "ok" : "warn";
@@ -812,26 +815,6 @@ const char *config_html = R"=====(<!DOCTYPE html>
                 <div class="form-group">
                     <label for="incubator_name">Nombre del Dispositivo</label>
                     <input type="text" id="incubator_name" name="incubator_name">
-                </div>
-                <div class="inline-group">
-                    <div class="form-group">
-                        <label for="min_temperature">Temperatura Mín (°C)</label>
-                        <input type="number" id="min_temperature" name="min_temperature" step="0.1">
-                    </div>
-                    <div class="form-group">
-                        <label for="max_temperature">Temperatura Máx (°C)</label>
-                        <input type="number" id="max_temperature" name="max_temperature" step="0.1">
-                    </div>
-                </div>
-                <div class="inline-group">
-                    <div class="form-group">
-                        <label for="min_hum">Humedad Mín (%)</label>
-                        <input type="number" id="min_hum" name="min_hum" min="0" max="100">
-                    </div>
-                    <div class="form-group">
-                        <label for="max_hum">Humedad Máx (%)</label>
-                        <input type="number" id="max_hum" name="max_hum" min="0" max="100">
-                    </div>
                 </div>
             </div>
 
@@ -957,7 +940,9 @@ const char *config_html = R"=====(<!DOCTYPE html>
                 <div id="relays-list"></div>
                 <div style="display: flex; gap: 10px; margin-top: 10px;">
                     <button type="button" class="btn btn-secondary"
-                        style="padding: 6px 12px; font-size: 12px;" onclick="addRelay('relay_2ch')">+ Agregar Relé Modbus</button>
+                        style="padding: 6px 12px; font-size: 12px;" onclick="addRelay('relay_2ch')">+ Agregar Relé Modbus 2CH</button>
+                    <button type="button" class="btn btn-secondary"
+                        style="padding: 6px 12px; font-size: 12px;" onclick="addRelay('relay_4ch')">+ Agregar Relé Modbus 4CH</button>
                     <button type="button" class="btn btn-secondary"
                         style="padding: 6px 12px; font-size: 12px;" onclick="addRelay('gpio')">+ Agregar Relé GPIO</button>
                 </div>
@@ -1061,7 +1046,18 @@ const DEFAULT_SENSORS = [
 ];
 
 const DEFAULT_RELAY_TEMPLATE = {
-    type: "relay_2ch", enabled: true, config: { address: 1, alias: "Nuevo Relé" }
+    type: "relay_2ch", enabled: true,
+    config: { address: 1, alias: "Nuevo Relé 2CH",
+              ch0: { max_on_ms: 0, min_off_ms: 0, inverted: false },
+              ch1: { max_on_ms: 0, min_off_ms: 0, inverted: false } }
+};
+const DEFAULT_RELAY_4CH_TEMPLATE = {
+    type: "relay_4ch", enabled: true,
+    config: { address: 255, alias: "Nuevo Relé 4CH",
+              ch0: { max_on_ms: 0, min_off_ms: 0, inverted: false },
+              ch1: { max_on_ms: 0, min_off_ms: 0, inverted: false },
+              ch2: { max_on_ms: 0, min_off_ms: 0, inverted: false },
+              ch3: { max_on_ms: 0, min_off_ms: 0, inverted: false } }
 };
 const DEFAULT_GPIO_RELAY_TEMPLATE = {
     type: "gpio", enabled: true, config: { pin: 2, alias: "Nuevo Relé GPIO", active_low: false }
@@ -1239,10 +1235,6 @@ function populateForm(config) {
 
     // Sistema
     document.getElementById('incubator_name').value = config.incubator_name || config.moni_name || '';
-    document.getElementById('min_temperature').value = config.min_temperature || '';
-    document.getElementById('max_temperature').value = config.max_temperature || '';
-    document.getElementById('min_hum').value = config.min_hum || '';
-    document.getElementById('max_hum').value = config.max_hum || '';
 
     // RS485 (nested object structure)
     const rs485 = config.rs485 || {};
@@ -1294,6 +1286,18 @@ function toggleESPNowConfig() {
     document.getElementById('espnow_config').style.display = enabled ? 'block' : 'none';
 }
 
+function toggleSensorConfig(index) {
+    const enabled = document.getElementById(`sensor_${index}_enabled`).checked;
+    const cfg = document.getElementById(`sensor_${index}_config`);
+    if (cfg) cfg.style.display = enabled ? 'block' : 'none';
+}
+
+function toggleRelayConfig(index) {
+    const enabled = document.getElementById(`relay_${index}_enabled`).checked;
+    const cfg = document.getElementById(`relay_${index}_config`);
+    if (cfg) cfg.style.display = enabled ? 'block' : 'none';
+}
+
 async function loadESPNowStatus() {
     try {
         const response = await fetch('/espnow/status');
@@ -1336,25 +1340,49 @@ function renderSensors(sensors) {
     const container = document.getElementById('sensors-list');
     container.innerHTML = '';
 
-    // Use default sensors if none configured
-    if (!Array.isArray(sensors) || sensors.length === 0) {
-        sensors = DEFAULT_SENSORS;
+    // Create a working copy of sensors
+    let displaySensors = [];
+    if (Array.isArray(sensors) && sensors.length > 0) {
+        displaySensors = [...sensors];
+    } else {
+        displaySensors = JSON.parse(JSON.stringify(DEFAULT_SENSORS));
         container.innerHTML = '<div class="info-text" style="background: #fff3cd; border-left: 4px solid var(--altermundi-orange); padding: 12px; margin-bottom: 15px;">⚠️ Usando configuración por defecto. Guarda para aplicar.</div>';
     }
 
-    sensors.forEach((sensor, index) => {
+    // Inject missing singleton sensors from DEFAULT_SENSORS as disabled
+    const singletonTypes = ['scd30', 'bme280', 'modbus_th', 'modbus_soil_7in1', 'onewire', 'internal_temp'];
+    DEFAULT_SENSORS.forEach(defSensor => {
+        if (singletonTypes.includes(defSensor.type)) {
+            const exists = displaySensors.find(s => s.type === defSensor.type);
+            if (!exists) {
+                displaySensors.push({
+                    type: defSensor.type,
+                    enabled: false,
+                    config: JSON.parse(JSON.stringify(defSensor.config))
+                });
+            }
+        }
+    });
+
+    // Ensure currentConfig.sensors is updated with the injected sensors so they are saved
+    currentConfig.sensors = displaySensors;
+
+    displaySensors.forEach((sensor, index) => {
         const sensorDiv = document.createElement('div');
         sensorDiv.className = 'sensor-item';
         sensorDiv.innerHTML = `
             <div class="form-group">
                 <input type="checkbox" id="sensor_${index}_enabled"
                        data-sensor-index="${index}" class="sensor-enabled"
+                       onchange="toggleSensorConfig(${index})"
                        ${sensor.enabled ? 'checked' : ''}>
                 <label class="checkbox-label" for="sensor_${index}_enabled">
                     <strong>${sensor.type.toUpperCase()}</strong>
                 </label>
             </div>
-            ${renderSensorConfig(sensor, index)}
+            <div id="sensor_${index}_config" style="display:${sensor.enabled ? 'block' : 'none'};">
+                ${renderSensorConfig(sensor, index)}
+            </div>
         `;
         container.appendChild(sensorDiv);
     });
@@ -1374,6 +1402,14 @@ function renderSensorConfig(sensor, index) {
 
         case 'internal_temp':
             return '<div class="info-text">Sensor de temperatura interna del ESP32. No requiere configuración adicional.</div>';
+
+        case 'bme280': {
+            const sda = currentConfig.i2c_sda, scl = currentConfig.i2c_scl;
+            const pinTxt = (sda !== undefined && scl !== undefined)
+                ? `SDA: GPIO${sda} · SCL: GPIO${scl}` : 'Bus I2C del sistema';
+            return `<div class="info-text">Sensor I2C (temp/hum/presión).
+                Conexión: <strong>${pinTxt}</strong> · Dirección: 0x76/0x77 (autodetecta).</div>`;
+        }
 
         case 'capacitive':
         case 'hd38':
@@ -1635,6 +1671,43 @@ function renderRelays(relays) {
                     </div>
                 </div>
             </div>`;
+        } else if (relay.type === 'relay_4ch') {
+            // Build 4 channel config blocks
+            let chBlocks = '';
+            for (let ch = 0; ch < 4; ch++) {
+                const key = `ch${ch}`;
+                const chCfg = relay.config[key] || {};
+                chBlocks += `
+            <div style="background:#f0f7ff; padding:12px; border-radius:4px; margin-bottom:8px; border-left: 3px solid var(--altermundi-blue);">
+                <strong style="font-size:13px; color:var(--altermundi-blue); display:block; margin-bottom:10px;">Canal ${ch + 1}</strong>
+                <div class="inline-group">
+                    <div class="form-group">
+                        <label>Max ON (ms)</label>
+                        <input type="number" id="relay_${index}_ch${ch}_max" value="${chCfg.max_on_ms || 0}" placeholder="0 = Infinito">
+                    </div>
+                    <div class="form-group">
+                        <label>Min OFF (ms)</label>
+                        <input type="number" id="relay_${index}_ch${ch}_min" value="${chCfg.min_off_ms || 0}" placeholder="0 = Sin límite">
+                    </div>
+                    <div class="form-group" style="padding-top:25px;">
+                        <input type="checkbox" id="relay_${index}_ch${ch}_inv" ${chCfg.inverted ? 'checked' : ''}>
+                        <label class="checkbox-label" for="relay_${index}_ch${ch}_inv">Lógica Invertida</label>
+                    </div>
+                </div>
+            </div>`;
+            }
+            configHtml = `
+            <div class="inline-group">
+                <div class="form-group">
+                    <label>Alias</label>
+                    <input type="text" id="relay_${index}_alias" value="${relay.config.alias || ''}" placeholder="Ej: Reles principales">
+                </div>
+                <div class="form-group">
+                    <label>Dirección Modbus</label>
+                    <input type="number" id="relay_${index}_address" value="${relay.config.address || 255}" min="1" max="254">
+                </div>
+            </div>
+            ${chBlocks}`;
         } else {
             configHtml = `
             <div class="inline-group">
@@ -1686,12 +1759,14 @@ function renderRelays(relays) {
         relayDiv.innerHTML = `
             <div class="hdr" style="display:flex; justify-content:space-between; margin-bottom:10px;">
                 <div class="form-group" style="margin-bottom:0;">
-                    <input type="checkbox" id="relay_${index}_enabled" ${relay.enabled ? 'checked' : ''}>
-                    <label class="checkbox-label" for="relay_${index}_enabled"><strong>Habilitado (${relay.type === 'gpio' ? 'GPIO' : 'Modbus'})</strong></label>
+                    <input type="checkbox" id="relay_${index}_enabled" onchange="toggleRelayConfig(${index})" ${relay.enabled ? 'checked' : ''}>
+                    <label class="checkbox-label" for="relay_${index}_enabled"><strong>Habilitado (${relay.type === 'gpio' ? 'GPIO' : relay.type === 'relay_4ch' ? 'Modbus 4CH' : 'Modbus 2CH'})</strong></label>
                 </div>
                 <button type="button" style="background:none; border:none; color:#dc3545; cursor:pointer;" onclick="removeRelay(${index})">🗑️</button>
             </div>
-            ${configHtml}
+            <div id="relay_${index}_config" style="display:${relay.enabled ? 'block' : 'none'};">
+                ${configHtml}
+            </div>
         `;
         container.appendChild(relayDiv);
     });
@@ -1702,6 +1777,8 @@ function addRelay(type = 'relay_2ch') {
     let newRelay;
     if (type === 'gpio') {
         newRelay = JSON.parse(JSON.stringify(DEFAULT_GPIO_RELAY_TEMPLATE));
+    } else if (type === 'relay_4ch') {
+        newRelay = JSON.parse(JSON.stringify(DEFAULT_RELAY_4CH_TEMPLATE));
     } else {
         newRelay = JSON.parse(JSON.stringify(DEFAULT_RELAY_TEMPLATE));
     }
@@ -1754,10 +1831,6 @@ function buildConfigFromForm() {
 
     // Sistema
     config.incubator_name = document.getElementById('incubator_name').value;
-    config.min_temperature = parseFloat(document.getElementById('min_temperature').value);
-    config.max_temperature = parseFloat(document.getElementById('max_temperature').value);
-    config.min_hum = parseInt(document.getElementById('min_hum').value);
-    config.max_hum = parseInt(document.getElementById('max_hum').value);
 
     // RS485 (nested object structure)
     config.rs485 = {
@@ -1879,6 +1952,16 @@ function buildConfigFromForm() {
                 if (maxOnInput) relay.config.max_on_ms = parseInt(maxOnInput.value) || 0;
                 const minOffInput = document.getElementById(`relay_${index}_min_off`);
                 if (minOffInput) relay.config.min_off_ms = parseInt(minOffInput.value) || 0;
+            } else if (relay.type === 'relay_4ch') {
+                const addrInput = document.getElementById(`relay_${index}_address`);
+                if (addrInput) relay.config.address = parseInt(addrInput.value);
+                for (let ch = 0; ch < 4; ch++) {
+                    relay.config[`ch${ch}`] = {
+                        max_on_ms:  parseInt(document.getElementById(`relay_${index}_ch${ch}_max`)?.value || 0),
+                        min_off_ms: parseInt(document.getElementById(`relay_${index}_ch${ch}_min`)?.value || 0),
+                        inverted:   document.getElementById(`relay_${index}_ch${ch}_inv`)?.checked || false
+                    };
+                }
             } else {
                 const addrInput = document.getElementById(`relay_${index}_address`);
                 if (addrInput) relay.config.address = parseInt(addrInput.value);

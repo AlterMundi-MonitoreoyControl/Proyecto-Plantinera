@@ -4,6 +4,7 @@
 #include <vector>
 #include <ArduinoJson.h>
 #include "RelayModule2CH.h"
+#include "RelayModule4CH.h"
 #include "core/GpioActuator.h"
 #include "../debug.h"
 
@@ -16,20 +17,25 @@ struct GpioRelayConfig {
 class RelayManager {
 private:
     std::vector<RelayModule2CH*> relays;
+    std::vector<RelayModule4CH*> relays4ch;
     std::vector<GpioRelayConfig> gpioRelays;
 
 public:
     ~RelayManager() {
-        for (auto r : relays) delete r;
+        for (auto r : relays)    delete r;
         relays.clear();
+        for (auto r : relays4ch) delete r;
+        relays4ch.clear();
         for (auto g : gpioRelays) delete g.actuator;
         gpioRelays.clear();
     }
 
     void loadFromConfig(JsonDocument& doc) {
         // Clear existing
-        for (auto r : relays) delete r;
+        for (auto r : relays)    delete r;
         relays.clear();
+        for (auto r : relays4ch) delete r;
+        relays4ch.clear();
         for (auto g : gpioRelays) delete g.actuator;
         gpioRelays.clear();
 
@@ -56,6 +62,24 @@ public:
                     act->configure(r["config"]["max_on_ms"] | 0, r["config"]["min_off_ms"] | 0);
                     gpioRelays.push_back({act, pin, alias});
                     DBG_INFO("[RelayMgr] Added GPIO: Pin=%d '%s' (ID=%d)\n", pin, alias.c_str(), gpioId);
+                } else if (type == "relay_4ch") {
+                    uint8_t addr = r["config"]["address"] | 255;
+                    if (addr >= 12 && addr < 200) {
+                        DBG_ERROR("[RelayMgr] WARN: Modbus Dir %d (ID %d) puede colisionar con GPIOs!\n", addr, addr << 4);
+                    }
+                    String alias = r["config"]["alias"] | "";
+
+                    auto* relay4 = new RelayModule4CH(addr, alias);
+                    const char* chKeys[4] = {"ch0","ch1","ch2","ch3"};
+                    for (uint8_t ch = 0; ch < 4; ch++) {
+                        JsonObjectConst chCfg = r["config"][chKeys[ch]];
+                        relay4->configureChannel(ch,
+                            chCfg["max_on_ms"] | 0,
+                            chCfg["min_off_ms"] | 0,
+                            chCfg["inverted"]   | false);
+                    }
+                    relays4ch.push_back(relay4);
+                    DBG_INFO("[RelayMgr] Added 4CH Modbus: Addr=%d '%s'\n", addr, alias.c_str());
                 } else {
                     uint8_t addr = r["config"]["address"] | 1;
                     if (addr >= 12) {
@@ -71,7 +95,7 @@ public:
                     modbusRelay->configureChannel(1, ch1["max_on_ms"] | 0, ch1["min_off_ms"] | 0, ch1["inverted"] | false);
 
                     relays.push_back(modbusRelay);
-                    DBG_INFO("[RelayMgr] Added Modbus: Addr=%d '%s'\n", addr, alias.c_str());
+                    DBG_INFO("[RelayMgr] Added Modbus 2CH: Addr=%d '%s'\n", addr, alias.c_str());
                 }
             } else {
                 DBG_VERBOSE("[RelayMgr] Relay disabled\n");
@@ -82,13 +106,22 @@ public:
     std::vector<RelayModule2CH*>& getRelays() {
         return relays;
     }
-    
+
+    std::vector<RelayModule4CH*>& getRelays4ch() {
+        return relays4ch;
+    }
+
     std::vector<GpioRelayConfig>& getGpioRelays() {
         return gpioRelays;
     }
     
     RelayModule2CH* getRelay(int index) {
-        if(index >= 0 && index < relays.size()) return relays[index];
+        if(index >= 0 && index < (int)relays.size()) return relays[index];
+        return nullptr;
+    }
+
+    RelayModule4CH* getRelay4ch(int index) {
+        if(index >= 0 && index < (int)relays4ch.size()) return relays4ch[index];
         return nullptr;
     }
 };

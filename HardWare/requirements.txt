@@ -1,0 +1,3 @@
+schemdraw==0.22
+# Framework de presentación (paleta + helpers add_title/add_footer):
+schemkit @ git+https://github.com/Pablomonte/schemkit.git

@@ -29,6 +29,7 @@
 #include "constants.h"
 #include "globals.h"    // grafanaUrl, grafanaToken
 #include "debug.h"
+#include "PushSubscriberManager.h"
 
 // --- Tuneable constants -------------------------------------------------------
 
@@ -232,6 +233,9 @@ public:
         } else {
             _handleNtfyFailure(code);
         }
+
+        // Send push notification to UnifiedPush subscribers
+        PushSubscriberManager::getInstance().notifySubscribers(message);
     }
 
     /**

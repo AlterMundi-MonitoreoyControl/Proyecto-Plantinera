@@ -355,14 +355,42 @@ public:
         return false;
     }
 
+    /**
+     * Inject relay coil states into the mediator as SensorReadings.
+     * Uses the cached _relayState[] — call syncState() first to refresh.
+     * varId: RELAY_OUT_1, RELAY_OUT_2
+     */
+    void syncOutputs(ControlMediator& mediator) {
+        static uint32_t outCounter = 1000000; // distinct counter space from inputs
+        outCounter++;
+
+        static const SensorVariable varIds[2] = {
+            SensorVariable::RELAY_OUT_1, SensorVariable::RELAY_OUT_2
+        };
+
+        for (int i = 0; i < 2; i++) {
+            SensorReading r;
+            r.key.deviceId = (uint8_t)(ESP.getEfuseMac() & 0xFF);
+            r.key.sensorId = _address;
+            r.key.varId    = (uint8_t)varIds[i];
+            r.value        = _relayState[i] ? 1.0f : 0.0f;
+            r.counter      = outCounter;
+            mediator.onSensorReading(r);
+        }
+        DBG_VERBOSE("[Relay %d] syncOutputs R1=%d R2=%d\n",
+                    _address, _relayState[0], _relayState[1]);
+    }
+
 
     /**
      * Get JSON representation for Web UI
      */
     String getStatusJSON() {
         String json = "{";
+        json += "\"type\":\"relay_2ch\",";
         json += "\"address\":" + String(_address) + ",";
         json += "\"alias\":\"" + _alias + "\",";
+        json += "\"active\":" + String(_active ? "true" : "false") + ",";
         json += "\"r0\":" + String(_ch0.getState() ? 1 : 0) + ",";
         json += "\"r1\":" + String(_ch1.getState() ? 1 : 0) + ",";
         json += "\"state\":[" + String(_ch0.getState() ? "true" : "false") + "," + String(_ch1.getState() ? "true" : "false") + "],";
