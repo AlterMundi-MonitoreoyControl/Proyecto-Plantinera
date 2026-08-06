@@ -1,6 +1,6 @@
 #ifndef VERSION_H
 #define VERSION_H
 
-#define FIRMWARE_VERSION "0.2.18"
+#define FIRMWARE_VERSION "0.2.19"
 
 #endif

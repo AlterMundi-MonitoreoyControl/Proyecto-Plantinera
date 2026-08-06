@@ -232,6 +232,37 @@ JsonDocument loadConfig() {
       configModified = true;
   }
 
+  // Automatic migration: add hash/incubator_name if missing (config.json
+  // creado por una versión de firmware anterior a estos campos). Son
+  // obligatorios para que la app LibreAgro pueda validar y agregar el hub.
+  if (!doc["hash"].is<const char*>() || String((const char*)doc["hash"]).isEmpty()) {
+      DBG_INFO("Migrating: adding hash/incubator_name\n");
+
+      String mac = WiFi.macAddress();
+      mac.replace(":", "");
+      doc["hash"] = mac;
+      if (!doc["incubator_name"].is<const char*>() ||
+          String((const char*)doc["incubator_name"]).isEmpty()) {
+          doc["incubator_name"] = "moni-" + mac;
+      }
+
+      configModified = true;
+  }
+
+  // Automatic migration: add temperature/humidity range fields if missing
+  // (requeridos por validateHubConfig de la app LibreAgro).
+  if (!doc["min_temperature"].is<float>() || !doc["max_temperature"].is<float>() ||
+      !doc["min_hum"].is<float>() || !doc["max_hum"].is<float>()) {
+      DBG_INFO("Migrating: adding temperature/humidity ranges\n");
+
+      doc["min_temperature"] = doc["min_temperature"] | 37.3;
+      doc["max_temperature"] = doc["max_temperature"] | 37.7;
+      doc["min_hum"] = doc["min_hum"] | 55;
+      doc["max_hum"] = doc["max_hum"] | 65;
+
+      configModified = true;
+  }
+
   // Save migrated config if modified
   if (configModified) {
       DBG_INFO("Saving migrated config...\n");

@@ -195,10 +195,10 @@ void handleMediciones() {
       r["key_var"] = (uint8_t)SensorVariable::CO2;
 
       float val = co2Sensor->getCO2();
-      if (val > 1000)
-        r["status"] = "warn";
-      else if (val > 1500)
+      if (val > 1500)
         r["status"] = "bad";
+      else if (val > 1000)
+        r["status"] = "warn";
       else
         r["status"] = "ok";
     }
